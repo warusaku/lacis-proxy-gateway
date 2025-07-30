@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LacisProxyGateway Configuration Schema",
+  "description": "LPG設定ファイルのスキーマ定義",
+  "type": "object",
+  "required": ["version", "metadata", "hostdomains", "hostingdevice", "adminuser", "endpoint", "options"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSONスキーマファイルへの参照"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "設定ファイルのバージョン"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["created", "modified", "modifiedBy", "revision"],
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "作成日時"
+        },
+        "modified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "最終更新日時"
+        },
+        "modifiedBy": {
+          "type": "string",
+          "description": "最終更新者"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "リビジョン番号"
+        }
+      }
+    },
+    "hostdomains": {
+      "type": "object",
+      "description": "ドメインと許可サブネットのマッピング",
+      "patternProperties": {
+        "^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?(\\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?)*$": {
+          "type": "string",
+          "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$",
+          "description": "CIDR形式のサブネット"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hostingdevice": {
+      "type": "object",
+      "description": "ドメインごとのルーティングルール",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "patternProperties": {
+            "^(/.*)?$": {
+              "type": "object",
+              "required": ["deviceip", "port", "sitename", "ips"],
+              "properties": {
+                "deviceip": {
+                  "type": "string",
+                  "pattern": "^(([0-9]{1,3}\\.){3}[0-9]{1,3})?$",
+                  "description": "転送先IPアドレス（空文字は接続拒否）"
+                },
+                "port": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  },
+                  "description": "転送先ポート番号のリスト"
+                },
+                "sitename": {
+                  "type": "string",
+                  "description": "サイト識別名（ログ用）"
+                },
+                "ips": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^(any|([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2})$"
+                  },
+                  "description": "許可IPリスト（'any'または CIDR形式）"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "adminuser": {
+      "type": "object",
+      "description": "管理ユーザー（ユーザー名 -> Argon2idハッシュ）",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "string",
+          "pattern": "^\\$argon2id\\$",
+          "description": "Argon2idハッシュ化されたパスワード"
+        }
+      },
+      "additionalProperties": false
+    },
+    "endpoint": {
+      "type": "object",
+      "required": ["logserver"],
+      "properties": {
+        "logserver": {
+          "type": "string",
+          "format": "uri",
+          "description": "ログ送信先エンドポイント"
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "websocket_timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 600,
+          "description": "WebSocketタイムアウト（秒）"
+        },
+        "log_retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "ログ保持期間（日）"
+        },
+        "session_timeout": {
+          "type": "integer",
+          "minimum": 60,
+          "default": 86400,
+          "description": "セッションタイムアウト（秒）"
+        },
+        "max_request_size": {
+          "type": "integer",
+          "minimum": 1024,
+          "default": 10485760,
+          "description": "最大リクエストサイズ（バイト）"
+        },
+        "rate_limit": {
+          "type": "object",
+          "properties": {
+            "requests_per_minute": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 60,
+              "description": "1分あたりのリクエスト上限"
+            },
+            "burst": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 120,
+              "description": "バースト許容数"
+            }
+          }
+        }
+      }
+    }
+  }
+} 

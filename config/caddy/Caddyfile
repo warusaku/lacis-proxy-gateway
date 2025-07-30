@@ -1,0 +1,125 @@
+# Caddyfile for LacisProxyGateway
+# Version: 1.0.0
+
+# グローバル設定
+{
+    admin localhost:2019
+    log {
+        output file /var/log/lpg/caddy.log
+        format json
+        level INFO
+    }
+}
+
+# 共通のセキュリティヘッダー
+(security_headers) {
+    header {
+        # XSS保護
+        X-XSS-Protection "1; mode=block"
+        
+        # コンテンツタイプスニッフィング防止
+        X-Content-Type-Options "nosniff"
+        
+        # クリックジャッキング防止
+        X-Frame-Options "DENY"
+        
+        # リファラー制御
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # コンテンツセキュリティポリシー
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: https:; frame-ancestors 'none'"
+        
+        # HSTS（HTTP Strict Transport Security）
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        
+        # 権限ポリシー
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        
+        # サーバー情報の隠蔽
+        -Server
+    }
+}
+
+# HTTPからHTTPSへのリダイレクト
+:80 {
+    # セキュリティヘッダーの適用
+    import security_headers
+    
+    # すべてのHTTPトラフィックをHTTPSにリダイレクト
+    @http {
+        protocol http
+    }
+    redir @http https://{host}{uri} permanent
+}
+
+# HTTPS設定（プレースホルダー）
+:443 {
+    # セキュリティヘッダーの適用
+    import security_headers
+    
+    # TLS設定
+    tls {
+        # TLS 1.2以上のみ許可
+        protocols tls1.2 tls1.3
+        
+        # 安全な暗号スイートのみ使用
+        ciphers TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    }
+    
+    # レート制限
+    rate_limit {
+        zone dynamic {
+            key {remote_host}
+            events 100
+            window 1m
+        }
+    }
+    
+    # 基本認証（必要に応じて）
+    # basicauth /admin/* {
+    #     admin $2a$14$... # bcrypt hash
+    # }
+    
+    # リバースプロキシのプレースホルダー
+    # （実際の設定はLPG APIによって動的に管理される）
+    respond "LacisProxyGateway is running" 200
+}
+
+# 管理UI用のHTTPS設定
+:8443 {
+    # セキュリティヘッダーの適用
+    import security_headers
+    
+    # 管理UIへのリバースプロキシ
+    reverse_proxy localhost:8080 {
+        # ヘルスチェック
+        health_uri /api/v1/health
+        health_interval 30s
+        health_timeout 5s
+        
+        # タイムアウト設定
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 5s
+        }
+    }
+    
+    # 静的ファイルの配信
+    handle /static/* {
+        root * /var/www/lpg
+        file_server
+    }
+    
+    # WebSocket対応
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websockets localhost:8080
+    
+    # ログ記録
+    log {
+        output file /var/log/lpg/admin-access.log
+        format json
+    }
+} 
