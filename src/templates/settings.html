@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="Subhead">
+    <h2 class="Subhead-heading">設定</h2>
+</div>
+
+<!-- タブナビゲーション -->
+<nav class="UnderlineNav mt-3">
+    <div class="UnderlineNav-body">
+        <a class="UnderlineNav-item selected" href="#basic" onclick="showTab('basic')">
+            基本設定
+        </a>
+        <a class="UnderlineNav-item" href="#backup" onclick="showTab('backup')">
+            バックアップ
+        </a>
+        <a class="UnderlineNav-item" href="#logs" onclick="showTab('logs')">
+            ログ設定
+        </a>
+        <a class="UnderlineNav-item" href="#advanced" onclick="showTab('advanced')">
+            詳細設定
+        </a>
+    </div>
+</nav>
+
+<!-- 基本設定タブ -->
+<div id="basic-tab" class="tab-content">
+    <div class="Box mt-3">
+        <div class="Box-header">
+            <h3 class="Box-title">管理者設定</h3>
+        </div>
+        <div class="Box-body">
+            <form id="adminForm">
+                <div class="form-group">
+                    <label for="adminPassword">新しいパスワード</label>
+                    <input type="password" class="form-control" id="adminPassword">
+                </div>
+                <div class="form-group">
+                    <label for="adminPasswordConfirm">パスワード確認</label>
+                    <input type="password" class="form-control" id="adminPasswordConfirm">
+                </div>
+                <button type="submit" class="btn btn-primary">パスワード変更</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- バックアップタブ -->
+<div id="backup-tab" class="tab-content" style="display: none;">
+    <div class="Box mt-3">
+        <div class="Box-header">
+            <h3 class="Box-title">設定バックアップ</h3>
+        </div>
+        <div class="Box-body">
+            <div class="mb-3">
+                <button class="btn btn-primary" onclick="downloadConfig()">
+                    設定をダウンロード
+                </button>
+                <button class="btn ml-2" onclick="showUploadModal()">
+                    設定をアップロード
+                </button>
+            </div>
+            
+            <h4 class="f5 mt-4">バックアップ履歴</h4>
+            <p class="color-fg-muted text-small">
+                設定変更時に自動的にバックアップが作成されます（最大5世代）
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ログ設定タブ -->
+<div id="logs-tab" class="tab-content" style="display: none;">
+    <div class="Box mt-3">
+        <div class="Box-header">
+            <h3 class="Box-title">ログ設定</h3>
+        </div>
+        <div class="Box-body">
+            <form id="logForm">
+                <div class="form-group">
+                    <label for="logServer">ログサーバーエンドポイント</label>
+                    <input type="url" class="form-control" id="logServer" 
+                           value="{{ config.endpoint.logserver }}"
+                           placeholder="https://example.com/logs">
+                </div>
+                <div class="form-group">
+                    <label for="logInterval">送信間隔（分）</label>
+                    <input type="number" class="form-control" id="logInterval" 
+                           value="15" min="1" max="60">
+                </div>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 詳細設定タブ -->
+<div id="advanced-tab" class="tab-content" style="display: none;">
+    <div class="Box mt-3">
+        <div class="Box-header">
+            <h3 class="Box-title">JSON設定エディタ</h3>
+        </div>
+        <div class="Box-body">
+            <div class="form-group">
+                <label for="configJson">設定JSON</label>
+                <textarea class="form-control" id="configJson" rows="20" 
+                          style="font-family: monospace;">{{ config|tojson(indent=2) }}</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="saveJsonConfig()">
+                JSON設定を保存
+            </button>
+            <p class="color-fg-muted text-small mt-2">
+                ⚠️ 注意: 不正な設定を保存するとシステムが動作しなくなる可能性があります
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+.tab-content {
+    margin-top: 20px;
+}
+
+.UnderlineNav-item {
+    cursor: pointer;
+}
+</style>
+
+<script>
+function showTab(tabName) {
+    // すべてのタブを非表示
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // すべてのタブリンクから selected クラスを削除
+    document.querySelectorAll('.UnderlineNav-item').forEach(link => {
+        link.classList.remove('selected');
+    });
+    
+    // 選択されたタブを表示
+    document.getElementById(tabName + '-tab').style.display = 'block';
+    
+    // 選択されたリンクに selected クラスを追加
+    event.target.classList.add('selected');
+}
+
+// パスワード変更
+document.getElementById('adminForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('adminPassword').value;
+    const confirm = document.getElementById('adminPasswordConfirm').value;
+    
+    if (password !== confirm) {
+        alert('パスワードが一致しません');
+        return;
+    }
+    
+    if (password.length < 8) {
+        alert('パスワードは8文字以上にしてください');
+        return;
+    }
+    
+    // TODO: パスワード変更API実装
+    alert('パスワード変更機能は実装中です');
+});
+
+// ログ設定保存
+document.getElementById('logForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const logServer = document.getElementById('logServer').value;
+    
+    try {
+        const config = await fetch('/api/config').then(r => r.json());
+        config.endpoint.logserver = logServer;
+        
+        const response = await fetch('/api/config', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            alert('ログ設定を保存しました');
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    } catch (error) {
+        alert('保存に失敗しました: ' + error);
+    }
+});
+
+// 設定ダウンロード
+async function downloadConfig() {
+    try {
+        const config = await fetch('/api/config').then(r => r.json());
+        const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lpg-config-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        alert('ダウンロードに失敗しました: ' + error);
+    }
+}
+
+// JSON設定保存
+async function saveJsonConfig() {
+    try {
+        const configText = document.getElementById('configJson').value;
+        const config = JSON.parse(configText);
+        
+        const response = await fetch('/api/config', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            alert('設定を保存しました');
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    } catch (error) {
+        alert('JSONパースエラー: ' + error);
+    }
+}
+</script>
+{% endblock %}

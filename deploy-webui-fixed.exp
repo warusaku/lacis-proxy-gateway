@@ -1,0 +1,97 @@
+#!/usr/bin/expect -f
+# Deploy LPG WebUI
+
+set timeout 600
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+puts "=== Deploying LPG WebUI ==="
+
+# Copy files
+spawn scp -r src requirements.txt update-proxy-simple.py root@$host:/opt/lpg/
+expect "password:"
+send "$root_pass\r"
+expect eof
+
+# Install and run
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Install pip3
+puts "\nInstalling pip3..."
+send "apt-get install -y python3-pip\r"
+expect {
+    "Do you want to continue" {
+        send "Y\r"
+        expect "# "
+    }
+    "# " { }
+    timeout { puts "Installation taking longer..." }
+}
+
+# Install Flask
+puts "\nInstalling Flask..."
+send "cd /opt/lpg\r"
+expect "# "
+send "pip3 install -r requirements.txt\r"
+expect "# "
+
+# Create directories
+send "mkdir -p /etc/lpg/certs\r"
+expect "# "
+
+# Copy update-proxy-simple.py to src directory
+send "cp update-proxy-simple.py src/\r"
+expect "# "
+
+# Stop old proxy
+send "pkill -f lpg-proxy.py\r"
+expect "# "
+send "pkill -f python3\r"
+expect "# "
+
+# Create systemd service
+send "cat > /etc/systemd/system/lpg.service << EOF\r"
+send "\[Unit\]\r"
+send "Description=LacisProxyGateway Server\r"
+send "After=network.target\r"
+send "\r"
+send "\[Service\]\r"
+send "Type=simple\r"
+send "User=root\r"
+send "WorkingDirectory=/opt/lpg\r"
+send "ExecStart=/usr/bin/python3 /opt/lpg/src/lpg_server.py\r"
+send "Restart=always\r"
+send "RestartSec=10\r"
+send "\r"
+send "\[Install\]\r"
+send "WantedBy=multi-user.target\r"
+send "EOF\r"
+expect "# "
+
+# Enable and start service
+send "systemctl daemon-reload\r"
+expect "# "
+send "systemctl enable lpg.service\r"
+expect "# "
+send "systemctl start lpg.service\r"
+expect "# "
+
+# Check status
+send "sleep 3\r"
+expect "# "
+send "systemctl status lpg.service --no-pager\r"
+expect "# "
+
+# Check ports
+send "netstat -tlnp | grep -E ':80|:8443'\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== WebUI Deployment Complete ==="
+puts "Access the admin UI at: https://192.168.234.2:8443"
+puts "Login: admin / lpgadmin123"

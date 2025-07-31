@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Devices{% endblock %}
+
+{% block content %}
+<div class="Subhead">
+    <h2 class="Subhead-heading">デバイス管理</h2>
+    <div class="Subhead-actions">
+        <button class="btn btn-primary btn-sm" onclick="showAddDeviceModal()">
+            + ルール追加
+        </button>
+    </div>
+</div>
+
+<div class="Box mt-3">
+    <div class="Box-header">
+        <h3 class="Box-title">ルーティングルール</h3>
+    </div>
+    
+    <div class="Box-body">
+        <table class="table-responsive">
+            <thead>
+                <tr>
+                    <th>ドメイン</th>
+                    <th>パス</th>
+                    <th>転送先IP</th>
+                    <th>ポート</th>
+                    <th>サイト名</th>
+                    <th>許可IP</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for domain, paths in config.hostingdevice.items() %}
+                    {% for path, rule in paths.items() %}
+                    <tr>
+                        <td>{{ domain }}</td>
+                        <td>{{ path if path else '/' }}</td>
+                        <td>{{ rule.deviceip if rule.deviceip else '-' }}</td>
+                        <td>{{ rule.port|join(', ') if rule.port else '-' }}</td>
+                        <td>{{ rule.sitename }}</td>
+                        <td>
+                            {% if rule.ips == ['any'] %}
+                                <span class="Label">Any</span>
+                            {% else %}
+                                {{ rule.ips|join(', ') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn-sm btn-danger" onclick="deleteRule('{{ domain }}', '{{ path }}')">
+                                削除
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Device Modal -->
+<div class="modal" id="addDeviceModal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideAddDeviceModal()"></div>
+    <div class="modal-content">
+        <div class="Box">
+            <div class="Box-header">
+                <h3 class="Box-title">ルール追加</h3>
+            </div>
+            <div class="Box-body">
+                <form id="addDeviceForm">
+                    <div class="form-group">
+                        <label for="domain">ドメイン</label>
+                        <select class="form-control" id="domain" required>
+                            <option value="">選択してください</option>
+                            {% for domain in config.hostdomains.keys() %}
+                            <option value="{{ domain }}">{{ domain }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="path">パス</label>
+                        <input type="text" class="form-control" id="path" 
+                               placeholder="例: /lacisstack/boards">
+                    </div>
+                    <div class="form-group">
+                        <label for="deviceip">転送先IP</label>
+                        <input type="text" class="form-control" id="deviceip" 
+                               placeholder="例: 192.168.234.10" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="port">ポート</label>
+                        <input type="number" class="form-control" id="port" 
+                               placeholder="例: 8080" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sitename">サイト名</label>
+                        <input type="text" class="form-control" id="sitename" 
+                               placeholder="例: whiteboard" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ips">許可IP（カンマ区切り）</label>
+                        <input type="text" class="form-control" id="ips" 
+                               placeholder="例: 192.168.3.0/24, any">
+                    </div>
+                </form>
+            </div>
+            <div class="Box-footer">
+                <button class="btn btn-primary" onclick="addDevice()">追加</button>
+                <button class="btn" onclick="hideAddDeviceModal()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 500px;
+}
+
+.table-responsive {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-responsive th,
+.table-responsive td {
+    padding: 8px 16px;
+    text-align: left;
+    border-bottom: 1px solid #30363d;
+}
+
+.table-responsive th {
+    font-weight: 600;
+    color: #8b949e;
+}
+</style>
+
+<script>
+function showAddDeviceModal() {
+    document.getElementById('addDeviceModal').style.display = 'block';
+}
+
+function hideAddDeviceModal() {
+    document.getElementById('addDeviceModal').style.display = 'none';
+    document.getElementById('addDeviceForm').reset();
+}
+
+async function addDevice() {
+    const domain = document.getElementById('domain').value;
+    const path = document.getElementById('path').value || '';
+    const deviceip = document.getElementById('deviceip').value;
+    const port = document.getElementById('port').value;
+    const sitename = document.getElementById('sitename').value;
+    const ipsInput = document.getElementById('ips').value || 'any';
+    const ips = ipsInput.split(',').map(ip => ip.trim()).filter(ip => ip);
+    
+    if (!domain || !deviceip || !port || !sitename) {
+        alert('必須項目を入力してください');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/devices', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                domain, path, deviceip, port, sitename, ips
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            alert('ルールが追加されました');
+            location.reload();
+        } else {
+            alert('エラー: ' + data.message);
+        }
+    } catch (error) {
+        alert('追加に失敗しました: ' + error);
+    }
+}
+
+async function deleteRule(domain, path) {
+    if (!confirm('このルールを削除しますか？')) return;
+    
+    // TODO: 削除API実装
+    alert('削除機能は実装中です');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LPG Admin{% endblock %} - LacisProxyGateway</title>
+    <link rel="stylesheet" href="https://unpkg.com/@primer/css@21.0.7/dist/primer.css">
+    <style>
+        :root {
+            --color-canvas-default: #0d1117;
+            --color-canvas-subtle: #161b22;
+            --color-border-default: #30363d;
+            --color-fg-default: #c9d1d9;
+            --color-fg-muted: #8b949e;
+        }
+        
+        body {
+            background-color: var(--color-canvas-default);
+            color: var(--color-fg-default);
+        }
+        
+        .Header {
+            background-color: var(--color-canvas-subtle);
+            border-bottom: 1px solid var(--color-border-default);
+        }
+        
+        .SideNav {
+            background-color: var(--color-canvas-subtle);
+            min-height: calc(100vh - 64px);
+        }
+        
+        .main-content {
+            min-height: calc(100vh - 64px);
+            padding: 24px;
+        }
+        
+        .deploy-button {
+            position: fixed;
+            top: 12px;
+            right: 24px;
+            z-index: 100;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-healthy { background-color: #3fb950; }
+        .status-warning { background-color: #d29922; }
+        .status-error { background-color: #f85149; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="Header px-3 py-2">
+        <div class="Header-item">
+            <h3 class="f3 text-bold">LacisProxyGateway</h3>
+        </div>
+        <div class="Header-item Header-item--full">
+            <span class="status-indicator status-healthy"></span>
+            <span class="text-small color-fg-muted">System: Healthy</span>
+        </div>
+        <div class="Header-item">
+            <details class="dropdown details-reset details-overlay">
+                <summary class="btn-sm btn" aria-haspopup="true">
+                    {{ session.username }}
+                </summary>
+                <ul class="dropdown-menu dropdown-menu-sw">
+                    <li><a class="dropdown-item" href="/logout">ログアウト</a></li>
+                </ul>
+            </details>
+        </div>
+    </div>
+
+    <!-- Deploy Button -->
+    <button class="btn btn-primary deploy-button" onclick="deployConfig()">
+        Deploy Changes
+    </button>
+
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <nav class="SideNav" style="width: 250px;">
+            <a class="SideNav-item {% if request.endpoint == 'domains' %}selected{% endif %}" href="/domains">
+                🌐 Domains
+            </a>
+            <a class="SideNav-item {% if request.endpoint == 'devices' %}selected{% endif %}" href="/devices">
+                📱 Devices
+            </a>
+            <a class="SideNav-item {% if request.endpoint == 'logs' %}selected{% endif %}" href="/logs">
+                📊 Logs
+            </a>
+            <a class="SideNav-item {% if request.endpoint == 'network' %}selected{% endif %}" href="/network">
+                🔌 Network
+            </a>
+            <a class="SideNav-item {% if request.endpoint == 'settings' %}selected{% endif %}" href="/settings">
+                ⚙️ Settings
+            </a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        async function deployConfig() {
+            if (!confirm('設定を適用しますか？')) return;
+            
+            try {
+                const response = await fetch('/api/config/deploy', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('設定が適用されました');
+                } else {
+                    alert('エラー: ' + data.message);
+                }
+            } catch (error) {
+                alert('デプロイに失敗しました: ' + error);
+            }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

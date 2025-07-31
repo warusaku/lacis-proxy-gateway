@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+# Check error and fix
+
+set timeout 300
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Check error
+send "journalctl -u lpg.service -n 50 --no-pager\r"
+expect "# "
+
+# Check if files exist
+send "ls -la /opt/lpg/src/\r"
+expect "# "
+
+# Try running directly to see error
+send "cd /opt/lpg && python3 src/lpg_server.py\r"
+expect {
+    "# " { }
+    "error" { exp_continue }
+    timeout { }
+}
+
+send "\003"
+expect "# "
+
+send "exit\r"
+expect eof
