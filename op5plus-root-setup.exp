@@ -1,0 +1,60 @@
+#!/usr/bin/expect -f
+# Setup Orange Pi 5 Plus with root
+
+set timeout 300
+set host "192.168.234.10"
+set root_pass "orangepi"
+set new_user "lacissystem"
+set new_pass "lacis12345@"
+
+puts "=== Setting up Orange Pi 5 Plus with root ==="
+
+# Try root login
+spawn ssh root@$host
+expect {
+    "password:" {
+        send "$root_pass\r"
+    }
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        expect "password:"
+        send "$root_pass\r"
+    }
+}
+
+expect {
+    "# " { puts "\nLogged in as root" }
+    "You are required to change your password" {
+        puts "\nChanging root password..."
+        send "$root_pass\r"
+        expect "New password:"
+        send "$new_pass\r"
+        expect "Retype new password:"
+        send "$new_pass\r"
+        expect "# "
+    }
+    "Permission denied" {
+        puts "\nRoot login failed"
+        exit 1
+    }
+    timeout { 
+        puts "\nLogin timeout"
+        exit 1
+    }
+}
+
+# Quick test server setup
+puts "\nSetting up test server..."
+send "python3 -m http.server 8080 &\r"
+expect "# "
+
+send "sleep 2\r"
+expect "# "
+
+send "netstat -tlnp | grep :8080\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== Test server running on port 8080 ==="

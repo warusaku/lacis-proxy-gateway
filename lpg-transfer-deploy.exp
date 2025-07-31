@@ -1,0 +1,62 @@
+#!/usr/bin/expect -f
+# Transfer deployment package and run setup
+
+set timeout 300
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+puts "=== Transferring Deployment Package ==="
+
+# Transfer file as root
+spawn scp lpg-deploy-v2.tar.gz root@$host:/home/lacissystem/
+expect "password:"
+send "$root_pass\r"
+expect eof
+
+puts "\n=== Running Setup Script ==="
+
+# Login and run setup
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Fix ownership
+send "chown lacissystem:lacissystem /home/lacissystem/lpg-deploy-v2.tar.gz\r"
+expect "# "
+
+# Extract files
+send "cd /home/lacissystem\r"
+expect "# "
+send "tar -xzf lpg-deploy-v2.tar.gz\r"
+expect "# "
+send "chown -R lacissystem:lacissystem config scripts\r"
+expect "# "
+
+# Install Caddy manually
+puts "\nInstalling Caddy..."
+send "wget -O /usr/bin/caddy https://github.com/caddyserver/caddy/releases/download/v2.7.6/caddy_2.7.6_linux_arm64\r"
+expect "# "
+send "chmod +x /usr/bin/caddy\r"
+expect "# "
+
+# Copy configurations
+puts "\nCopying configurations..."
+send "cp -r config/* /etc/lpg/\r"
+expect "# "
+send "cp config/caddy/Caddyfile /etc/caddy/Caddyfile 2>/dev/null || mkdir -p /etc/caddy && cp config/caddy/Caddyfile /etc/caddy/\r"
+expect "# "
+
+# Start Caddy
+puts "\nStarting Caddy..."
+send "caddy start --config /etc/caddy/Caddyfile --adapter caddyfile\r"
+expect "# "
+
+# Check status
+send "ps aux | grep caddy\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== Deployment Complete ==="

@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+# Continue LPG setup
+
+set timeout 600
+set host "192.168.234.2"
+set root_pass "orangepi"
+set username "lacissystem"
+set user_pass "lacis12345@"
+
+puts "=== Continuing LPG Setup ==="
+
+# Login as root
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Continue apt update
+puts "\nContinuing system update..."
+send "apt-get update -y\r"
+expect "# "
+
+# Install basic packages
+puts "\nInstalling basic packages..."
+send "apt-get install -y curl wget git vim ufw\r"
+expect "# "
+
+# Install Caddy
+puts "\nInstalling Caddy..."
+send "apt-get install -y debian-keyring debian-archive-keyring apt-transport-https\r"
+expect "# "
+
+send "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg\r"
+expect "# "
+
+send "curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list\r"
+expect "# "
+
+send "apt-get update\r"
+expect "# "
+
+send "apt-get install -y caddy\r"
+expect "# "
+
+# Install vsftpd
+puts "\nInstalling vsftpd..."
+send "apt-get install -y vsftpd\r"
+expect "# "
+
+# Exit
+send "exit\r"
+expect eof
+
+puts "\n=== Package Installation Complete ==="

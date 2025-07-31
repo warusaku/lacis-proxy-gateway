@@ -1,0 +1,111 @@
+#!/usr/bin/expect -f
+# Create lacissystem user on LPG
+
+set timeout 300
+set host "192.168.234.2"
+set root_pass "orangepi"
+set username "lacissystem"
+set user_pass "lacis12345@"
+
+puts "=== Creating lacissystem user on LPG ==="
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Create user
+puts "\nCreating user lacissystem..."
+send "useradd -m -s /bin/bash $username\r"
+expect "# "
+
+# Set password
+send "echo '$username:$user_pass' | chpasswd\r"
+expect "# "
+
+# Add to sudo group
+send "usermod -aG sudo $username\r"
+expect "# "
+
+# Verify user creation
+send "id $username\r"
+expect "# "
+
+# Create necessary directories
+send "mkdir -p /opt/lpg /etc/lpg /var/log/lpg /var/ftp/lpg\r"
+expect "# "
+
+# Set ownership
+send "chown -R $username:$username /opt/lpg /etc/lpg /var/log/lpg /var/ftp/lpg\r"
+expect "# "
+
+# Update system
+puts "\nUpdating system packages..."
+send "apt update\r"
+expect {
+    "# " { }
+    timeout { puts "Update taking longer than expected..." }
+}
+
+# Install basic packages
+puts "\nInstalling basic packages..."
+send "apt install -y curl wget git vim ufw vsftpd\r"
+expect {
+    "# " { }
+    timeout { puts "Installation taking longer than expected..." }
+}
+
+# Copy deployment files
+puts "\nDeployment files need to be transferred..."
+send "exit\r"
+expect eof
+
+# Now copy files and re-login
+puts "\n=== Copying deployment files ==="
+spawn scp lpg-deploy-v2.tar.gz root@$host:/home/$username/
+expect "password:"
+send "$root_pass\r"
+expect eof
+
+# Login as new user and extract
+puts "\n=== Extracting and running setup ==="
+spawn ssh $username@$host
+expect "password:"
+send "$user_pass\r"
+expect "$ "
+
+# Extract files
+send "tar -xzf lpg-deploy-v2.tar.gz\r"
+expect "$ "
+
+# Make scripts executable
+send "chmod +x scripts/*.sh\r"
+expect "$ "
+
+# Run setup with sudo
+send "sudo ./scripts/setup-lpg.sh\r"
+expect {
+    "password for $username:" {
+        send "$user_pass\r"
+    }
+}
+
+# Wait for setup
+set timeout 600
+expect {
+    "Completed at:" {
+        puts "\nSetup completed successfully!"
+    }
+    timeout {
+        puts "\nSetup timed out - continuing..."
+    }
+}
+
+send "exit\r"
+expect eof
+
+puts "\n=== User Creation Complete ==="
+puts "Username: $username"
+puts "Password: $user_pass"
+puts "\nYou can now login with:"
+puts "ssh $username@$host"

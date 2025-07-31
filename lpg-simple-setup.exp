@@ -1,0 +1,81 @@
+#!/usr/bin/expect -f
+# Simple LPG setup for testing
+
+set timeout 600
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+puts "=== Setting up Simple Reverse Proxy ==="
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Install nginx as alternative
+puts "\nInstalling nginx..."
+send "apt-get install -y nginx\r"
+expect {
+    "# " { }
+    "Do you want to continue" {
+        send "Y\r"
+        expect "# "
+    }
+    timeout { puts "Installation taking longer..." }
+}
+
+# Create simple proxy config
+send "cat > /etc/nginx/sites-available/lpg << 'EOF'\r"
+send "server {\r"
+send "    listen 80;\r"
+send "    server_name akb001yebraxfqsm9y.dyndns-web.com;\r"
+send "\r"
+send "    location /lacisstack/boards/ {\r"
+send "        proxy_pass http://192.168.234.10:8080/;\r"
+send "        proxy_set_header Host \$host;\r"
+send "        proxy_set_header X-Real-IP \$remote_addr;\r"
+send "        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;\r"
+send "        proxy_set_header X-Forwarded-Proto \$scheme;\r"
+send "        proxy_set_header X-Forwarded-Prefix /lacisstack/boards;\r"
+send "    }\r"
+send "\r"
+send "    location / {\r"
+send "        return 200 'LPG Proxy Gateway Running';\r"
+send "        add_header Content-Type text/plain;\r"
+send "    }\r"
+send "}\r"
+send "EOF\r"
+expect "# "
+
+# Enable site
+send "ln -sf /etc/nginx/sites-available/lpg /etc/nginx/sites-enabled/\r"
+expect "# "
+send "rm -f /etc/nginx/sites-enabled/default\r"
+expect "# "
+
+# Test and reload nginx
+send "nginx -t\r"
+expect "# "
+send "systemctl restart nginx\r"
+expect "# "
+
+# Check status
+send "systemctl status nginx --no-pager\r"
+expect "# "
+
+# Setup local test page
+send "mkdir -p /var/www/html\r"
+expect "# "
+send "echo '<h1>LPG Proxy Gateway</h1><p>Status: Active</p>' > /var/www/html/index.html\r"
+expect "# "
+
+# Check listening ports
+send "netstat -tlnp | grep :80\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== Simple Proxy Setup Complete ==="
+puts "LPG is now listening on port 80"
+puts "Test with: curl http://192.168.234.2/"

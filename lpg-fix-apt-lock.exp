@@ -1,0 +1,52 @@
+#!/usr/bin/expect -f
+# Fix apt lock and continue setup
+
+set timeout 600
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+puts "=== Fixing APT Lock and Continuing Setup ==="
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Kill apt processes
+puts "\nKilling stuck apt processes..."
+send "pkill -9 apt\r"
+expect "# "
+send "pkill -9 apt-get\r"
+expect "# "
+send "rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock\r"
+expect "# "
+send "dpkg --configure -a\r"
+expect "# "
+
+# Install packages
+puts "\nInstalling packages..."
+send "apt-get update\r"
+expect "# "
+
+send "apt-get install -y curl wget git vim ufw vsftpd\r"
+expect {
+    "# " { }
+    timeout { puts "Installation taking longer than expected..." }
+}
+
+send "apt-get install -y caddy\r"
+expect {
+    "# " { }
+    timeout { puts "Caddy installation taking longer than expected..." }
+}
+
+# Check installation
+send "which caddy\r"
+expect "# "
+send "which vsftpd\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== APT Lock Fixed and Packages Installed ==="

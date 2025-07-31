@@ -1,0 +1,93 @@
+#!/usr/bin/expect -f
+# Test both possible usernames
+
+set timeout 10
+set host "192.168.234.2"
+set password "lacis12345@"
+
+puts "=== Testing LPG Login Combinations ==="
+
+# Test 1: lacissystem
+puts "\n1. Trying lacissystem..."
+spawn ssh lacissystem@$host
+expect {
+    "password:" {
+        send "$password\r"
+        expect {
+            "$ " {
+                puts "\nSUCCESS: Logged in as lacissystem"
+                send "whoami\r"
+                expect "$ "
+                send "exit\r"
+                exit 0
+            }
+            "Permission denied" {
+                puts "\nFailed: lacissystem with lacis12345@"
+            }
+        }
+    }
+    timeout {
+        puts "\nTimeout: No password prompt"
+    }
+}
+close
+
+# Test 2: lacisadmin
+puts "\n2. Trying lacisadmin..."
+spawn ssh lacisadmin@$host
+expect {
+    "password:" {
+        send "$password\r"
+        expect {
+            "$ " {
+                puts "\nSUCCESS: Logged in as lacisadmin"
+                send "whoami\r"
+                expect "$ "
+                send "exit\r"
+                exit 0
+            }
+            "Permission denied" {
+                puts "\nFailed: lacisadmin with lacis12345@"
+            }
+        }
+    }
+    timeout {
+        puts "\nTimeout: No password prompt"
+    }
+}
+close
+
+# Test 3: root with orangepi
+puts "\n3. Trying root with orangepi..."
+spawn ssh root@$host
+expect {
+    "password:" {
+        send "orangepi\r"
+        expect {
+            "# " {
+                puts "\nSUCCESS: Logged in as root with orangepi"
+                send "cat /etc/passwd | grep -E 'lacis|admin'\r"
+                expect "# "
+                send "exit\r"
+                exit 0
+            }
+            "You are required" {
+                puts "\nDevice needs initial setup"
+                send "\003"
+                exit 1
+            }
+            "Permission denied" {
+                puts "\nFailed: root with orangepi"
+            }
+        }
+    }
+    timeout {
+        puts "\nTimeout: No password prompt"
+    }
+}
+
+puts "\n=== All login attempts failed ==="
+puts "\nPossible reasons:"
+puts "1. The device was set up with different credentials"
+puts "2. SSH password authentication might be disabled"
+puts "3. This might not be the correct device"

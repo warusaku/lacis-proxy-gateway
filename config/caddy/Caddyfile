@@ -1,5 +1,6 @@
 # Caddyfile for LacisProxyGateway
 # Version: 1.0.0
+# Updated: 2025-07-31 - Support for akb001yebraxfqsm9y.dyndns-web.com
 
 # グローバル設定
 {
@@ -46,14 +47,11 @@
     import security_headers
     
     # すべてのHTTPトラフィックをHTTPSにリダイレクト
-    @http {
-        protocol http
-    }
-    redir @http https://{host}{uri} permanent
+    redir https://{host}{uri} permanent
 }
 
-# HTTPS設定（プレースホルダー）
-:443 {
+# メインのHTTPS設定
+https://akb001yebraxfqsm9y.dyndns-web.com {
     # セキュリティヘッダーの適用
     import security_headers
     
@@ -61,9 +59,6 @@
     tls {
         # TLS 1.2以上のみ許可
         protocols tls1.2 tls1.3
-        
-        # 安全な暗号スイートのみ使用
-        ciphers TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
     }
     
     # レート制限
@@ -75,17 +70,90 @@
         }
     }
     
-    # 基本認証（必要に応じて）
-    # basicauth /admin/* {
-    #     admin $2a$14$... # bcrypt hash
-    # }
+    # ルートパス - 既存のサービスに転送
+    handle / {
+        respond "Welcome to akb001yebraxfqsm9y.dyndns-web.com" 200
+    }
     
-    # リバースプロキシのプレースホルダー
-    # （実際の設定はLPG APIによって動的に管理される）
-    respond "LacisProxyGateway is running" 200
+    # /lacisstackパス - LacisStack関連サービス
+    handle /lacisstack {
+        respond "LacisStack Services" 200
+    }
+    
+    # /lacisstack/boards - ホワイトボードアプリケーション
+    handle /lacisstack/boards* {
+        # パスのリライト
+        uri strip_prefix /lacisstack/boards
+        
+        reverse_proxy 192.168.234.10:8080 {
+            # ヘルスチェック
+            health_uri /health
+            health_interval 30s
+            health_timeout 5s
+            
+            # ヘッダーの設定
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Prefix /lacisstack/boards
+        }
+    }
+    
+    # /lacisstack/boards/ws - WebSocket接続
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade websocket
+        path /lacisstack/boards/ws*
+    }
+    handle @websockets {
+        uri strip_prefix /lacisstack/boards
+        
+        reverse_proxy 192.168.234.10:8081 {
+            # WebSocket専用設定
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    
+    # /lacisstack/api - APIサーバー
+    handle /lacisstack/api* {
+        uri strip_prefix /lacisstack/api
+        
+        reverse_proxy 192.168.234.11:3000 {
+            # ヘルスチェック
+            health_uri /health
+            health_interval 30s
+            health_timeout 5s
+            
+            # ヘッダーの設定
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-API-Prefix /lacisstack/api
+        }
+    }
+    
+    # アクセスログ
+    log {
+        output file /var/log/lpg/access.log
+        format json
+    }
 }
 
-# 管理UI用のHTTPS設定
+# ワイルドカードサブドメイン対応
+*.akb001yebraxfqsm9y.dyndns-web.com {
+    # セキュリティヘッダーの適用
+    import security_headers
+    
+    # デフォルトレスポンス
+    respond "Subdomain not configured" 404
+}
+
+# 管理UI用のHTTPS設定（ローカルアクセスのみ）
 :8443 {
     # セキュリティヘッダーの適用
     import security_headers
@@ -122,4 +190,4 @@
         output file /var/log/lpg/admin-access.log
         format json
     }
-} 
+}

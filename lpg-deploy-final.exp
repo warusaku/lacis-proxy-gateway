@@ -1,0 +1,52 @@
+#!/usr/bin/expect -f
+# Deploy final LPG proxy
+
+set timeout 300
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+puts "=== Deploying Final LPG Proxy ==="
+
+spawn scp update-proxy-simple.py root@$host:/home/lacissystem/lpg-proxy.py
+expect "password:"
+send "$root_pass\r"
+expect eof
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Kill old proxy
+send "pkill -f simple-proxy.py\r"
+expect "# "
+send "pkill -f lpg-proxy.py\r"
+expect "# "
+
+# Set permissions
+send "chmod +x /home/lacissystem/lpg-proxy.py\r"
+expect "# "
+
+# Run on port 80
+send "nohup python3 /home/lacissystem/lpg-proxy.py > /var/log/lpg-proxy.log 2>&1 &\r"
+expect "# "
+
+# Check status
+send "sleep 2\r"
+expect "# "
+send "ps aux | grep lpg-proxy\r"
+expect "# "
+send "netstat -tlnp | grep :80\r"
+expect "# "
+
+# Test endpoints
+send "curl -s http://localhost/health | python3 -m json.tool\r"
+expect "# "
+
+send "curl -I http://localhost/lacisstack/boards\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== LPG Proxy Deployed ==="
