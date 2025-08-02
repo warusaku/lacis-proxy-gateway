@@ -18,9 +18,12 @@ import (
 
 // CaddyClient Caddy Admin APIクライアント
 type CaddyClient struct {
-	adminAPI string
-	client   *http.Client
-	logger   *logrus.Logger
+	adminAPI     string
+	client       *http.Client
+	logger       *logrus.Logger
+	poolSize     int
+	connPool     chan *http.Client
+	rateLimiter  chan struct{}
 }
 
 // CaddyConfig Caddy設定構造
@@ -77,12 +80,31 @@ type HeaderMods struct {
 
 // NewCaddyClient Caddyクライアントを作成
 func NewCaddyClient(adminAPI string, logger *logrus.Logger) *CaddyClient {
+	poolSize := 20
+	connPool := make(chan *http.Client, poolSize)
+	rateLimiter := make(chan struct{}, 10) // 同時10接続制限
+	
+	// 接続プールを初期化
+	for i := 0; i < poolSize; i++ {
+		connPool <- &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        10,
+				MaxIdleConnsPerHost: 2,
+				IdleConnTimeout:     30 * time.Second,
+			},
+		}
+	}
+	
 	return &CaddyClient{
-		adminAPI: adminAPI,
+		adminAPI:    adminAPI,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		logger: logger,
+		logger:      logger,
+		poolSize:    poolSize,
+		connPool:    connPool,
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -228,6 +250,14 @@ func (cc *CaddyClient) buildRejectRoute(host, path string) Route {
 
 // applyConfig Caddyに設定を適用
 func (cc *CaddyClient) applyConfig(config *CaddyConfig) error {
+	// レート制限
+	cc.rateLimiter <- struct{}{}
+	defer func() { <-cc.rateLimiter }()
+	
+	// 接続プールから取得
+	client := <-cc.connPool
+	defer func() { cc.connPool <- client }()
+	
 	data, err := json.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("JSON生成エラー: %w", err)
@@ -240,7 +270,7 @@ func (cc *CaddyClient) applyConfig(config *CaddyConfig) error {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := cc.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("APIリクエストエラー: %w", err)
 	}

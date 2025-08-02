@@ -1,0 +1,93 @@
+#!/usr/bin/expect -f
+# Setup test service on Orange Pi 5 Plus with lacissystem user
+
+set timeout 300
+set host "192.168.234.10"
+set user "lacissystem"
+set pass "lacis12345@"
+
+puts "=== Setting up Test Service on Orange Pi 5 Plus ==="
+
+spawn ssh $user@$host
+expect {
+    "password:" {
+        send "$pass\r"
+    }
+    "Are you sure you want to continue connecting" {
+        send "yes\r"
+        expect "password:"
+        send "$pass\r"
+    }
+}
+expect "$ "
+
+# Create web directory
+send "sudo mkdir -p /var/www/lacisboards\r"
+expect {
+    "password for lacissystem:" {
+        send "$pass\r"
+        expect "$ "
+    }
+    "$ " {}
+}
+
+# Set permissions
+send "sudo chown -R lacissystem:lacissystem /var/www/lacisboards\r"
+expect "$ "
+
+# Create test page
+send "cat > /var/www/lacisboards/index.html << 'EOF'\r"
+send "<!DOCTYPE html>\r"
+send "<html>\r"
+send "<head>\r"
+send "    <title>LacisDrawBoards - Orange Pi 5 Plus</title>\r"
+send "    <style>\r"
+send "        body { font-family: Arial, sans-serif; padding: 50px; text-align: center; }\r"
+send "        .success { color: green; }\r"
+send "        .device-info { background: #f0f0f0; padding: 20px; border-radius: 5px; display: inline-block; }\r"
+send "    </style>\r"
+send "</head>\r"
+send "<body>\r"
+send "    <h1>LacisDrawBoards</h1>\r"
+send "    <h2 class='success'>✓ Service Running on Orange Pi 5 Plus</h2>\r"
+send "    <div class='device-info'>\r"
+send "        <p><strong>Device:</strong> Orange Pi 5 Plus</p>\r"
+send "        <p><strong>IP Address:</strong> 192.168.234.10</p>\r"
+send "        <p><strong>Port:</strong> 8080</p>\r"
+send "        <p><strong>Accessed via:</strong> LPG Proxy Gateway</p>\r"
+send "    </div>\r"
+send "    <hr>\r"
+send "    <p>This confirms the complete routing chain is working:</p>\r"
+send "    <p>Internet → DDNS → ER605 → LPG (192.168.234.2) → Orange Pi 5 Plus (192.168.234.10)</p>\r"
+send "</body>\r"
+send "</html>\r"
+send "EOF\r"
+expect "$ "
+
+# Kill any existing Python server on port 8080
+send "sudo pkill -f 'python3.*8080' || true\r"
+expect "$ "
+
+# Start HTTP server in background
+send "cd /var/www/lacisboards && nohup python3 -m http.server 8080 > /tmp/webserver.log 2>&1 &\r"
+expect "$ "
+
+send "sleep 3\r"
+expect "$ "
+
+# Check if server is running
+puts "\n=== Checking if server started ==="
+send "netstat -tln | grep :8080\r"
+expect "$ "
+
+# Test locally
+puts "\n=== Testing local access ==="
+send "curl -s http://localhost:8080/ | grep -o 'Service Running'\r"
+expect "$ "
+
+send "exit\r"
+expect eof
+
+puts "\n=== Setup Complete ==="
+puts "Test server should now be running on Orange Pi 5 Plus port 8080"
+puts "Access via: http://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards"

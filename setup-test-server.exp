@@ -1,0 +1,82 @@
+#!/usr/bin/expect -f
+# Setup test server on Orange Pi 5 Plus
+
+set timeout 300
+set host "192.168.234.10"
+set passwords {orangepi lacis12345@}
+
+puts "=== Setting up Test Server on Orange Pi 5 Plus ==="
+
+foreach pass $passwords {
+    spawn ssh root@$host
+    expect {
+        "password:" {
+            send "$pass\r"
+            expect {
+                "# " {
+                    puts "\nLogged in with password: $pass"
+                    break
+                }
+                "Permission denied" {
+                    close
+                    continue
+                }
+            }
+        }
+        "Are you sure you want to continue connecting" {
+            send "yes\r"
+            expect "password:"
+            send "$pass\r"
+            expect {
+                "# " {
+                    puts "\nLogged in with password: $pass"
+                    break
+                }
+                "Permission denied" {
+                    close
+                    continue
+                }
+            }
+        }
+        timeout {
+            puts "\nConnection timeout"
+            exit 1
+        }
+    }
+}
+
+# Setup simple web server
+send "mkdir -p /var/www/lacisboards\r"
+expect "# "
+
+send "cat > /var/www/lacisboards/index.html << 'EOF'\r"
+send "<html>\r"
+send "<head><title>LacisDrawBoards</title></head>\r"
+send "<body>\r"
+send "<h1>LacisDrawBoards Test Page</h1>\r"
+send "<p>Orange Pi 5 Plus - 192.168.234.10</p>\r"
+send "<p>This page confirms that the routing is working correctly.</p>\r"
+send "</body>\r"
+send "</html>\r"
+send "EOF\r"
+expect "# "
+
+# Start simple HTTP server
+send "cd /var/www/lacisboards && python3 -m http.server 8080 &\r"
+expect "# "
+
+send "sleep 2\r"
+expect "# "
+
+# Check if running
+send "netstat -tlnp | grep :8080\r"
+expect "# "
+
+# Test locally
+send "curl http://localhost:8080/\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== Test server should now be running on port 8080 ==="

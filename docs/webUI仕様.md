@@ -5,9 +5,9 @@ projects:
 tags:
 - '#proj-lpg'
 created: '2025-07-28'
-updated: '2025-07-28'
+updated: '2025-07-31'
 author: unknown
-status: draft
+status: implemented
 ---
 # LacisProxyGateway WebUI仕様書
 
@@ -24,12 +24,12 @@ status: draft
 | 項目 | 内容 |
 |------|------|
 | システム名 | LacisProxyGateway 管理UI |
-| URL | https://192.168.234.2:8443 |
-| フレームワーク | React 18 + TypeScript |
+| URL | http://192.168.234.2:8443 |
+| フレームワーク | Python Flask + Jinja2 Templates |
 | UIライブラリ | Primer CSS / GitHub Design System |
-| 状態管理 | React Context API + useReducer |
-| ビルドツール | Vite |
-| 認証方式 | JWT (HS256) + Argon2id |
+| 状態管理 | サーバーサイドセッション |
+| ビルドツール | 不要（テンプレートベース） |
+| 認証方式 | SHA256ハッシュ + Flaskセッション |
 
 ### 1.2 対応ブラウザ
 
@@ -373,8 +373,33 @@ src/web/
 
 ---
 
+## 実装状況（2025-07-31更新）
+
+### 実装済み機能
+- ✅ ログイン/ログアウト（簡易認証）
+- ✅ ドメイン管理（追加/一覧表示）
+- ✅ デバイス管理（ルーティングルール設定）
+- ✅ ログビューアー（最新50行表示）
+- ✅ ネットワーク状態表示（CPU/メモリ使用率）
+- ✅ 設定管理（JSON編集/保存）
+- ✅ GitHub Design Systemテーマ適用
+
+### 未実装機能
+- ❌ HTTPS対応（現在HTTP）
+- ❌ Argon2id認証（SHA256で代替）
+- ❌ リアルタイムログストリーミング
+- ❌ 設定バックアップ/リストア
+- ❌ 削除機能（ドメイン/デバイス）
+- ❌ 国際化対応
+
+### 技術的変更点
+- React SPAからFlaskテンプレートベースに変更
+- WebSocketからポーリングベースに変更
+- MongoDBは使用せず、config.jsonファイルベース
+
 ## 変更履歴
 
 | バージョン | 日付 | 変更内容 | 作成者 |
 |-----------|------|----------|--------|
 | 1.0.0 | 2025-07-26 | 初版作成 | System |
+| 1.1.0 | 2025-07-31 | Flask実装完了、仕様変更反映 | System |

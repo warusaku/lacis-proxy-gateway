@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"context"
 
 	"github.com/lacis/lpg/src/api/models"
 	"github.com/sirupsen/logrus"
@@ -19,20 +20,25 @@ import (
 
 // ConfigManager 設定管理サービス
 type ConfigManager struct {
-	mu           sync.RWMutex
-	config       *models.LPGConfig
-	configPath   string
-	schemaPath   string
-	lastModified time.Time
-	logger       *logrus.Logger
+	mu               sync.RWMutex
+	config           *models.LPGConfig
+	configPath       string
+	schemaPath       string
+	lastModified     time.Time
+	logger           *logrus.Logger
+	concurrent       int
+	maxConcurrent    int
+	rateLimitClients map[string]*time.Time
 }
 
 // NewConfigManager 設定マネージャーを作成
 func NewConfigManager(configPath string, logger *logrus.Logger) *ConfigManager {
 	return &ConfigManager{
-		configPath: configPath,
-		schemaPath: filepath.Join(filepath.Dir(configPath), "config.schema.json"),
-		logger:     logger,
+		configPath:       configPath,
+		schemaPath:       filepath.Join(filepath.Dir(configPath), "config.schema.json"),
+		logger:           logger,
+		maxConcurrent:    100,
+		rateLimitClients: make(map[string]*time.Time),
 	}
 }
 
@@ -354,4 +360,65 @@ func (cm *ConfigManager) applyCaddyConfig() error {
 	// TODO: Caddy Admin APIを使用して設定を適用
 	cm.logger.Info("Caddy設定の適用（未実装）")
 	return nil
+}
+
+// CheckConcurrentLimit 同時接続数制限をチェック
+func (cm *ConfigManager) CheckConcurrentLimit(clientIP string) bool {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	
+	// 現在の同時接続数をチェック
+	if cm.concurrent >= cm.maxConcurrent {
+		cm.logger.Warnf("同時接続数上限に達しました: %d/%d (クライアント: %s)", cm.concurrent, cm.maxConcurrent, clientIP)
+		return false
+	}
+	
+	cm.concurrent++
+	cm.logger.Debugf("同時接続数: %d/%d (クライアント: %s)", cm.concurrent, cm.maxConcurrent, clientIP)
+	return true
+}
+
+// ReleaseConcurrentLimit 同時接続数制限を解放
+func (cm *ConfigManager) ReleaseConcurrentLimit(clientIP string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	
+	if cm.concurrent > 0 {
+		cm.concurrent--
+		cm.logger.Debugf("同時接続数解放: %d/%d (クライアント: %s)", cm.concurrent, cm.maxConcurrent, clientIP)
+	}
+}
+
+// CheckRateLimit レート制限をチェック
+func (cm *ConfigManager) CheckRateLimit(clientIP string) bool {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	
+	now := time.Now()
+	if lastRequest, exists := cm.rateLimitClients[clientIP]; exists {
+		if now.Sub(*lastRequest) < time.Minute/time.Duration(cm.config.Options.RateLimit.RequestsPerMinute) {
+			cm.logger.Warnf("レート制限に抵触: %s", clientIP)
+			return false
+		}
+	}
+	
+	cm.rateLimitClients[clientIP] = &now
+	
+	// 古いエントリをクリーンアップ
+	go cm.cleanupRateLimitClients()
+	
+	return true
+}
+
+// cleanupRateLimitClients 古いレート制限エントリをクリーンアップ
+func (cm *ConfigManager) cleanupRateLimitClients() {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	
+	now := time.Now()
+	for ip, lastRequest := range cm.rateLimitClients {
+		if now.Sub(*lastRequest) > 5*time.Minute {
+			delete(cm.rateLimitClients, ip)
+		}
+	}
 } 

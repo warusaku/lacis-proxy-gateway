@@ -1,0 +1,39 @@
+#!/usr/bin/expect -f
+# Check external access configuration
+
+set timeout 60
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Check recent access logs
+puts "\n=== Checking Recent Access Logs ==="
+send "tail -50 /var/log/lpg-proxy.log | grep -v '192.168.3\\|127.0.0.1'\r"
+expect "# "
+
+# Check if HTTPS is being handled
+puts "\n=== Checking Port 443 ==="
+send "netstat -tlnp | grep :443\r"
+expect "# "
+
+# Check proxy handler for root path
+puts "\n=== Testing Root Path ==="
+send "curl -s http://localhost/\r"
+expect "# "
+
+# Check if request comes through with Host header
+puts "\n=== Testing with Host Header ==="
+send "curl -s -H 'Host: akb001yebraxfqsm9y.dyndns-web.com' http://localhost/lacisstack/boards\r"
+expect "# "
+
+# Check current proxy code
+puts "\n=== Checking Proxy Handler ==="
+send "grep -A5 'do_GET' /opt/lpg/src/update_proxy_simple.py\r"
+expect "# "
+
+send "exit\r"
+expect eof

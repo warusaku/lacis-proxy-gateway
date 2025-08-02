@@ -1,0 +1,49 @@
+#!/usr/bin/expect -f
+# Check LPG routing configuration
+
+set timeout 60
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Check LPG service status
+puts "\n=== Checking LPG Service Status ==="
+send "systemctl status lpg.service --no-pager\r"
+expect "# "
+
+# Check if proxy is listening
+puts "\n=== Checking Listening Ports ==="
+send "netstat -tlnp | grep -E ':80|:443'\r"
+expect "# "
+
+# Check current config
+puts "\n=== Checking Current Configuration ==="
+send "cat /etc/lpg/config.json | python3 -m json.tool | grep -A5 -B5 'lacisstack/boards'\r"
+expect "# "
+
+# Check proxy logs
+puts "\n=== Checking Recent Proxy Logs ==="
+send "tail -20 /var/log/lpg-proxy.log\r"
+expect "# "
+
+# Test local routing
+puts "\n=== Testing Local Routing ==="
+send "curl -v http://localhost/lacisstack/boards\r"
+expect "# "
+
+# Check if target is reachable
+puts "\n=== Testing Target Connectivity ==="
+send "ping -c 3 192.168.234.10\r"
+expect "# "
+
+# Check DNS resolution
+puts "\n=== Checking DNS Resolution ==="
+send "nslookup akb001yebraxfqsm9y.dyndns-web.com\r"
+expect "# "
+
+send "exit\r"
+expect eof
