@@ -1,0 +1,68 @@
+#!/usr/bin/expect -f
+# Apply new Caddyfile configuration
+
+set timeout 60
+set host "192.168.234.2"
+set root_pass "orangepi"
+
+puts "=== Applying New Caddyfile Configuration ==="
+
+# Copy new Caddyfile
+spawn scp config/caddy/Caddyfile.new root@$host:/etc/caddy/Caddyfile
+expect "password:"
+send "$root_pass\r"
+expect eof
+
+spawn ssh root@$host
+expect "password:"
+send "$root_pass\r"
+expect "# "
+
+# Check if Caddy is installed
+send "which caddy\r"
+expect "# "
+
+# If Caddy is not installed, install it
+send "caddy version 2>/dev/null || (curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list && apt update && apt install -y caddy)\r"
+expect "# "
+
+# Create Caddy directories
+send "mkdir -p /var/log/lpg\r"
+expect "# "
+send "mkdir -p /etc/caddy\r"
+expect "# "
+
+# Set proper permissions
+send "chown -R caddy:caddy /etc/caddy\r"
+expect "# "
+send "chown -R caddy:caddy /var/log/lpg\r"
+expect "# "
+
+# Validate Caddyfile
+send "caddy validate --config /etc/caddy/Caddyfile\r"
+expect "# "
+
+# Stop any existing Caddy process
+send "systemctl stop caddy 2>/dev/null || true\r"
+expect "# "
+send "pkill caddy 2>/dev/null || true\r"
+expect "# "
+
+# Start Caddy with new configuration
+send "systemctl enable caddy\r"
+expect "# "
+send "systemctl start caddy\r"
+expect "# "
+
+# Check status
+send "sleep 3\r"
+expect "# "
+send "systemctl status caddy --no-pager\r"
+expect "# "
+send "netstat -tlnp | grep :443\r"
+expect "# "
+
+send "exit\r"
+expect eof
+
+puts "\n=== Caddyfile Applied ==="

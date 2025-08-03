@@ -1,0 +1,45 @@
+{
+  "adminuser": {
+    "admin": "$argon2id$v=19$m=65536,t=3,p=4$DKlNqKTsVMCvzPEJmVmJdw$wXTKzCplGGMWYyL+vrPgTkxLPvUkW1b5gDQXUkUgkKs"
+  },
+  "endpoint": {
+    "logserver": ""
+  },
+  "hostdomains": {
+    "akb001yebraxfqsm9y.dyndns-web.com": "192.168.234.0/24"
+  },
+  "hostingdevice": {
+    "akb001yebraxfqsm9y.dyndns-web.com": {
+      "/lacisstack/boards": {
+        "deviceip": "192.168.234.10",
+        "ips": ["192.168.3.0/24"],
+        "port": [5173],
+        "sitename": "whiteboard-frontend"
+      },
+      "/lacisstack/boards/api": {
+        "deviceip": "192.168.234.10",
+        "ips": ["any"],
+        "port": [8080],
+        "sitename": "whiteboard-api"
+      },
+      "/lacisstack/boards/ws": {
+        "deviceip": "192.168.234.10",
+        "ips": ["any"],
+        "port": [8081],
+        "sitename": "whiteboard-ws"
+      },
+      "/lacisstack/api": {
+        "deviceip": "192.168.234.11",
+        "ips": ["any"],
+        "port": [3000],
+        "sitename": "api-server"
+      }
+    }
+  },
+  "options": {
+    "proxy_port": 8080,
+    "admin_port": 8443,
+    "log_level": "INFO",
+    "heartbeat_interval": 60
+  }
+}

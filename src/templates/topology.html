@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}トポロジービュー - LPG Admin{% endblock %}
+
+{% block content %}
+<div class="Subhead">
+    <h2 class="Subhead-heading">システムトポロジー</h2>
+    <div class="Subhead-actions">
+        <button class="btn btn-sm" onclick="refreshTopology()">
+            <svg class="octicon mr-1" width="16" height="16" fill="currentColor">
+                <path d="M1.679 7.932c.412-.621 1.242-1.75 2.366-2.717C5.175 4.242 6.527 3.5 8 3.5c1.473 0 2.824.742 3.955 1.715 1.124.967 1.954 2.096 2.366 2.717a.119.119 0 010 .136c-.412.621-1.242 1.75-2.366 2.717C10.825 11.758 9.473 12.5 8 12.5c-1.473 0-2.824-.742-3.955-1.715C2.921 9.818 2.091 8.689 1.679 8.068a.119.119 0 010-.136zM8 2c-1.981 0-3.67.992-4.933 2.078C1.797 5.169.88 6.423.43 7.1a1.619 1.619 0 000 1.798c.45.678 1.367 1.932 2.637 3.024C4.329 13.008 6.019 14 8 14c1.981 0 3.67-.992 4.933-2.078 1.27-1.092 2.187-2.346 2.637-3.024a1.619 1.619 0 000-1.798c-.45-.678-1.367-1.932-2.637-3.024C11.671 2.992 9.981 2 8 2zm2 6a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            更新
+        </button>
+    </div>
+</div>
+
+<!-- システム全体の状態 -->
+<div class="d-flex flex-wrap mb-3">
+    <div class="Box flex-1 mr-3" style="min-width: 200px;">
+        <div class="Box-header">
+            <h3 class="Box-title">システム状態</h3>
+        </div>
+        <div class="Box-body">
+            <div class="d-flex flex-items-center mb-2">
+                <span class="status-indicator status-healthy"></span>
+                <span>LPG Gateway</span>
+                <span class="Label Label--success ml-auto">Active</span>
+            </div>
+            <div class="d-flex flex-items-center mb-2">
+                <span class="status-indicator status-healthy"></span>
+                <span>Proxy Service</span>
+                <span class="Label Label--success ml-auto">Running</span>
+            </div>
+            <div class="d-flex flex-items-center">
+                <span class="status-indicator status-warning"></span>
+                <span>Health Check</span>
+                <span class="Label Label--warning ml-auto">Monitoring</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="Box flex-1" style="min-width: 200px;">
+        <div class="Box-header">
+            <h3 class="Box-title">統計情報</h3>
+        </div>
+        <div class="Box-body">
+            <dl class="d-flex">
+                <div class="flex-1">
+                    <dt class="f6 color-fg-muted">総ドメイン数</dt>
+                    <dd class="f2-light" id="domain-count">{{ domains|length }}</dd>
+                </div>
+                <div class="flex-1">
+                    <dt class="f6 color-fg-muted">アクティブデバイス</dt>
+                    <dd class="f2-light" id="device-count">{{ devices|length }}</dd>
+                </div>
+                <div class="flex-1">
+                    <dt class="f6 color-fg-muted">総接続数</dt>
+                    <dd class="f2-light" id="connection-count">{{ metrics.active_connections or 0 }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<!-- ドメイン一覧 -->
+<div class="Box mb-3">
+    <div class="Box-header">
+        <h3 class="Box-title">ドメイン概要</h3>
+    </div>
+    <div class="Box-body">
+        <div class="d-flex flex-wrap">
+            {% for domain in domains %}
+            <div class="domain-card Box mr-3 mb-3" style="min-width: 300px; flex: 1;">
+                <div class="Box-header">
+                    <h4 class="Box-title d-flex flex-items-center">
+                        <span class="status-indicator status-{{ 'healthy' if domain.status == 'active' else 'warning' }}"></span>
+                        {{ domain.domain_name }}
+                        {% if domain.connection_count %}
+                        <span class="Counter ml-2">{{ domain.connection_count }}</span>
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="Box-body">
+                    <dl class="mb-0">
+                        <dt class="f6 color-fg-muted">表示名</dt>
+                        <dd class="mb-2">{{ domain.display_name or domain.domain_name }}</dd>
+                        
+                        <dt class="f6 color-fg-muted">許可サブネット</dt>
+                        <dd class="mb-2">
+                            {% for subnet in domain.allowed_subnets %}
+                            <span class="Label mr-1">{{ subnet }}</span>
+                            {% endfor %}
+                        </dd>
+                        
+                        <dt class="f6 color-fg-muted">LPG情報</dt>
+                        <dd class="mb-0">
+                            <div class="d-flex flex-items-center mb-1">
+                                <span class="f6">IP: {{ domain.lpg_ip or '192.168.234.2' }}</span>
+                            </div>
+                            <div class="d-flex flex-items-center mb-1">
+                                <span class="f6">タイプ: {{ domain.connection_type or 'HTTP/HTTPS' }}</span>
+                            </div>
+                            <div class="d-flex flex-items-center">
+                                <span class="f6">通信速度: {{ domain.speed or 'N/A' }}</span>
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+            {% else %}
+            <div class="blankslate">
+                <h3 class="blankslate-heading">ドメインが設定されていません</h3>
+                <p>ドメインを追加して開始してください。</p>
+                <a href="/domains" class="btn btn-primary">ドメインを追加</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- デバイス接続状況 -->
+<div class="Box mb-3">
+    <div class="Box-header">
+        <h3 class="Box-title">デバイス接続状況</h3>
+    </div>
+    <div class="Box-body">
+        {% if devices %}
+        <div class="d-flex flex-wrap">
+            {% for ip, device_group in devices|groupby('ip_address') %}
+            <div class="device-group Box mr-3 mb-3" style="min-width: 280px;">
+                <div class="Box-header">
+                    <h4 class="Box-title d-flex flex-items-center">
+                        <span class="status-indicator status-{{ 'healthy' if device_group|selectattr('status', 'equalto', 'active')|list else 'warning' }}"></span>
+                        {{ ip }}
+                        <span class="Counter ml-2">{{ device_group|list|length }}</span>
+                    </h4>
+                </div>
+                <div class="Box-body">
+                    {% for device in device_group %}
+                    <div class="d-flex flex-items-center mb-2">
+                        <div class="flex-1">
+                            <div class="f6 text-bold">{{ device.device_name }}</div>
+                            <div class="f7 color-fg-muted">{{ device.registration_path }}:{{ device.port }}</div>
+                        </div>
+                        <span class="Label Label--{{ 'success' if device.status == 'active' else 'secondary' }}">
+                            {{ device.status }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="blankslate">
+            <h3 class="blankslate-heading">接続されているデバイスがありません</h3>
+            <p>デバイスが接続されると、ここに表示されます。</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ネットワークトポロジー図 -->
+<div class="Box">
+    <div class="Box-header">
+        <h3 class="Box-title">ネットワークトポロジー</h3>
+    </div>
+    <div class="Box-body">
+        <div id="topology-diagram" class="d-flex flex-items-center flex-justify-center p-4">
+            <svg width="900" height="500" viewBox="0 0 900 500" class="border color-border-subtle rounded-2">
+                <!-- Background -->
+                <rect width="900" height="500" fill="#fafbfc"/>
+                
+                <!-- Internet Cloud -->
+                <g id="internet">
+                    <ellipse cx="150" cy="80" rx="80" ry="40" fill="#e1f5fe" stroke="#0277bd" stroke-width="2"/>
+                    <text x="150" y="85" text-anchor="middle" class="f6 fill-fg-default">Internet</text>
+                </g>
+                
+                <!-- DDNS -->
+                <g id="ddns">
+                    <rect x="300" y="50" width="160" height="60" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+                    <text x="380" y="75" text-anchor="middle" class="f6 fill-fg-default">DDNS Gateway</text>
+                    <text x="380" y="95" text-anchor="middle" class="f7 fill-fg-muted">dyndns-web.com</text>
+                </g>
+                
+                <!-- LPG Gateway (中央) -->
+                <g id="lpg-gateway">
+                    <rect x="320" y="200" width="140" height="80" rx="10" fill="#e8f5e8" stroke="#2e7d32" stroke-width="4"/>
+                    <text x="390" y="230" text-anchor="middle" class="f5 text-bold fill-fg-default">LPG Gateway</text>
+                    <text x="390" y="250" text-anchor="middle" class="f6 fill-fg-default">192.168.234.2</text>
+                    <text x="390" y="270" text-anchor="middle" class="f7 fill-fg-muted">Port 80, 443, 8443</text>
+                </g>
+                
+                <!-- Domain Zones -->
+                {% for domain in domains[:3] %}
+                {% set domain_loop = loop %}
+                <g id="domain-{{ domain_loop.index }}">
+                    <rect x="{{ 50 + (domain_loop.index - 1) * 280 }}" y="350" 
+                          width="240" height="120" rx="8" 
+                          fill="#fff3e0" stroke="#f57c00" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="{{ 170 + (domain_loop.index - 1) * 280 }}" y="375" 
+                          text-anchor="middle" class="f6 fill-fg-default">{{ domain.domain_name }}</text>
+                    
+                    <!-- Devices in Domain -->
+                    {% for device in devices|selectattr('domain_id', 'equalto', domain.id)[:2] %}
+                    {% set device_x = 80 + (domain_loop.index - 1) * 280 + (loop.index - 1) * 80 %}
+                    <rect x="{{ device_x }}" y="400" width="70" height="40" rx="4" 
+                          fill="#e3f2fd" stroke="#1976d2"/>
+                    <text x="{{ device_x + 35 }}" y="420" text-anchor="middle" class="f7 fill-fg-default">{{ device.device_name[:8] }}</text>
+                    <text x="{{ device_x + 35 }}" y="435" text-anchor="middle" class="f8 fill-fg-muted">:{{ device.port }}</text>
+                    {% endfor %}
+                </g>
+                {% endfor %}
+                
+                <!-- Connection Lines -->
+                <!-- Internet to DDNS -->
+                <line x1="230" y1="80" x2="300" y2="80" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+                
+                <!-- DDNS to LPG -->
+                <line x1="380" y1="110" x2="390" y2="200" stroke="#666" stroke-width="3" marker-end="url(#arrowhead)"/>
+                
+                <!-- LPG to Domains -->
+                {% for domain in domains[:3] %}
+                {% set domain_x = 170 + (loop.index - 1) * 280 %}
+                <line x1="390" y1="280" x2="{{ domain_x }}" y2="350" 
+                      stroke="#2e7d32" stroke-width="2" marker-end="url(#arrowhead)"/>
+                {% endfor %}
+                
+                <!-- Arrow marker -->
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+                    </marker>
+                </defs>
+                
+                <!-- Route Labels -->
+                <text x="250" y="40" class="f7 fill-fg-accent">HTTPS</text>
+                <text x="400" y="160" class="f7 fill-fg-accent">Proxy</text>
+                {% for domain in domains[:3] %}
+                {% set label_x = 280 + (loop.index - 1) * 280 %}
+                <text x="{{ label_x }}" y="320" class="f7 fill-fg-accent">{{ domain.registration_path or '/api' }}</text>
+                {% endfor %}
+            </svg>
+        </div>
+        
+        <!-- Status Legend -->
+        <div class="d-flex flex-wrap mt-3 pt-3 border-top">
+            <div class="mr-4 mb-2">
+                <span class="status-indicator status-healthy mr-1"></span>
+                <span class="f6">アクティブ</span>
+            </div>
+            <div class="mr-4 mb-2">
+                <span class="status-indicator status-warning mr-1"></span>
+                <span class="f6">警告</span>
+            </div>
+            <div class="mr-4 mb-2">
+                <span class="status-indicator status-error mr-1"></span>
+                <span class="f6">エラー</span>
+            </div>
+            <div class="ml-auto">
+                <span class="f7 color-fg-muted">最終更新: <span id="last-updated">{{ current_time }}</span></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Topology refresh function
+async function refreshTopology() {
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    
+    button.disabled = true;
+    button.innerHTML = `
+        <svg class="octicon mr-1 anim-rotate" width="16" height="16" fill="currentColor">
+            <path d="M8 0a8 8 0 110 16A8 8 0 018 0zM7 3a1 1 0 012 0v4a1 1 0 01-2 0V3zm0 8a1 1 0 012 0v2a1 1 0 01-2 0v-2z"/>
+        </svg>
+        更新中...
+    `;
+    
+    try {
+        // ページを再読み込みして最新データを取得
+        setTimeout(() => location.reload(), 500);
+    } catch (error) {
+        console.error('Refresh error:', error);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+// Auto refresh every 30 seconds
+setInterval(() => {
+    if (document.visibilityState === 'visible') {
+        // Silent refresh of data
+        fetch('/api/system/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update counters
+                if (data.domains) document.getElementById('domain-count').textContent = data.domains.length;
+                if (data.devices) document.getElementById('device-count').textContent = data.devices.length;
+                if (data.metrics && data.metrics.active_connections) {
+                    document.getElementById('connection-count').textContent = data.metrics.active_connections;
+                }
+                
+                // Update timestamp
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('ja-JP');
+            })
+            .catch(error => console.error('Auto refresh error:', error));
+    }
+}, 30000);
+</script>
+
+<style>
+.domain-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.domain-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.device-group {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.device-group:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#topology-diagram svg {
+    background: #fafbfc;
+    border: 1px solid var(--color-border-default);
+}
+
+.fill-fg-default {
+    fill: var(--color-fg-default);
+}
+
+.fill-fg-muted {
+    fill: var(--color-fg-muted);
+}
+
+.fill-fg-accent {
+    fill: #0969da;
+}
+
+@media (max-width: 768px) {
+    #topology-diagram svg {
+        width: 100%;
+        height: auto;
+    }
+}
+</style>
+{% endblock %}

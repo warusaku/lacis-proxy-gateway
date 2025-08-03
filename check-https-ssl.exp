@@ -1,0 +1,55 @@
+#!/usr/bin/expect -f
+# Check HTTPS/SSL status on LPG server
+
+set timeout 30
+set host "192.168.234.2"
+set password "lacis12345@"
+
+puts "=== Checking HTTPS/SSL Configuration ==="
+
+spawn ssh lacissystem@$host
+expect {
+    "password:" {
+        send "$password\r"
+        expect "$ "
+        
+        puts "\n=== Check if Caddy is running ==="
+        send "ps aux | grep caddy | grep -v grep\r"
+        expect "$ "
+        
+        puts "\n=== Check nginx status ==="
+        send "ps aux | grep nginx | grep -v grep\r"
+        expect "$ "
+        
+        puts "\n=== Check port 443 specifically ==="
+        send "ss -tlnp | grep :443\r"
+        expect "$ "
+        
+        puts "\n=== Check if any service binds to 443 ==="
+        send "lsof -i :443 2>/dev/null || echo 'lsof not available or no process on 443'\r"
+        expect "$ "
+        
+        puts "\n=== Check SSL certificate directories ==="
+        send "ls -la /etc/letsencrypt/live/ 2>/dev/null || echo 'No letsencrypt dir'\r"
+        expect "$ "
+        
+        puts "\n=== Check Caddy config and status ==="
+        send "ls -la /etc/caddy/ 2>/dev/null || echo 'No caddy config dir'\r"
+        expect "$ "
+        
+        puts "\n=== Check iptables rules for port 443 ==="
+        send "iptables -L INPUT -v -n | grep 443 2>/dev/null || echo 'No iptables or no 443 rules'\r"
+        expect "$ "
+        
+        puts "\n=== Test localhost HTTPS ==="
+        send "curl -k -s -o /dev/null -w '%{http_code}' https://localhost/ 2>/dev/null || echo 'HTTPS localhost failed'\r"
+        expect "$ "
+        
+        send "exit\r"
+        expect eof
+    }
+    timeout {
+        puts "\nConnection timeout"
+        exit 1
+    }
+}

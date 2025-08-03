@@ -1,0 +1,205 @@
+{% extends "base_dark.html" %}
+
+{% block title %}トポロジー - LacisProxyGateway{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">
+        <i class="bi bi-diagram-3"></i> ネットワークトポロジー
+    </h1>
+
+    <!-- ネットワーク図 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4><i class="bi bi-diagram-2"></i> ネットワーク構成</h4>
+        </div>
+        <div class="card-body" style="overflow: auto; max-height: 600px;">
+            <svg id="topology-svg" viewBox="0 0 1200 800" style="width: 100%; min-width: 1000px;">
+                <!-- 背景グリッド -->
+                <defs>
+                    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                        <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#21262d" stroke-width="1"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="#0d1117"/>
+                <rect width="100%" height="100%" fill="url(#grid)"/>
+                
+                <!-- インターネット -->
+                <g transform="translate(600, 50)">
+                    <circle cx="0" cy="0" r="40" fill="#1f6feb" stroke="#58a6ff" stroke-width="2"/>
+                    <text x="0" y="5" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="bold">Internet</text>
+                </g>
+                
+                <!-- LPG（中央配置） -->
+                <g transform="translate(600, 250)">
+                    <rect x="-80" y="-40" width="160" height="80" rx="10" fill="#238636" stroke="#2ea043" stroke-width="2"/>
+                    <text x="0" y="0" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="bold">
+                        <tspan x="0" dy="-10">LPG</tspan>
+                        <tspan x="0" dy="20" font-size="12">{{ domains[0].lpg_ip if domains else '192.168.234.2' }}</tspan>
+                        <tspan x="0" dy="15" font-size="10">
+                            <tspan fill="#58a6ff">● 稼働中</tspan>
+                        </tspan>
+                    </text>
+                </g>
+                
+                <!-- インターネットからLPGへの接続線 -->
+                <line x1="600" y1="90" x2="600" y2="210" stroke="#58a6ff" stroke-width="3"/>
+                
+                <!-- ドメイン（LPGの左側に配置） -->
+                {% set domain_y_start = 150 %}
+                {% for domain in domains %}
+                <g transform="translate(300, {{ domain_y_start + loop.index0 * 80 }})">
+                    <rect x="-100" y="-25" width="200" height="50" rx="5" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+                    <text x="0" y="0" text-anchor="middle" fill="#c9d1d9" font-size="11">
+                        <tspan x="0" dy="-5">{{ domain.domain_name[:25] }}{% if domain.domain_name|length > 25 %}...{% endif %}</tspan>
+                        <tspan x="0" dy="15" fill="#8b949e" font-size="9">{{ domain.allowed_subnets[0] if domain.allowed_subnets else 'any' }}</tspan>
+                    </text>
+                    <!-- LPGへの接続線 -->
+                    <line x1="100" y1="0" x2="220" y2="{{ 250 - domain_y_start - loop.index0 * 80 }}" 
+                          stroke="#30363d" stroke-width="1" stroke-dasharray="3,3"/>
+                </g>
+                {% endfor %}
+                
+                <!-- デバイス（同一IPグループ化、LPGの右側に配置） -->
+                {% set devices_by_ip = {} %}
+                {% for device in devices %}
+                    {% set ip = device.ip_address %}
+                    {% if ip not in devices_by_ip %}
+                        {% set _ = devices_by_ip.update({ip: []}) %}
+                    {% endif %}
+                    {% set _ = devices_by_ip[ip].append(device) %}
+                {% endfor %}
+                
+                {% set device_y_start = 150 %}
+                {% for ip, device_group in devices_by_ip.items() %}
+                <g transform="translate(900, {{ device_y_start + loop.index0 * 100 }})">
+                    <rect x="-100" y="-40" width="200" height="80" rx="5" fill="#21262d" stroke="#f85149" stroke-width="1"/>
+                    <text x="0" y="-20" text-anchor="middle" fill="#c9d1d9" font-size="12" font-weight="bold">
+                        {{ ip }}
+                    </text>
+                    <text x="0" y="0" text-anchor="middle" fill="#8b949e" font-size="10">
+                        {% for dev in device_group[:2] %}
+                        <tspan x="0" dy="12">{{ dev.device_name[:20] }}</tspan>
+                        {% endfor %}
+                        {% if device_group|length > 2 %}
+                        <tspan x="0" dy="12" font-size="9">他 {{ device_group|length - 2 }} サービス</tspan>
+                        {% endif %}
+                    </text>
+                    <!-- 接続状態インジケーター -->
+                    <circle cx="85" cy="-25" r="5" fill="{{ '#2ea043' if device_group[0].status == 'active' else '#f85149' }}"/>
+                    <!-- LPGからの接続線 -->
+                    <line x1="-100" y1="0" x2="-220" y2="{{ 250 - device_y_start - loop.index0 * 100 }}" 
+                          stroke="#30363d" stroke-width="2"/>
+                </g>
+                {% endfor %}
+            </svg>
+        </div>
+        <div class="card-footer text-muted">
+            <small>
+                <i class="bi bi-info-circle"></i> 
+                スクロールして全体を確認できます。
+                接続状態: <span class="text-success">● 稼働中</span> <span class="text-danger">● 停止中</span>
+            </small>
+        </div>
+    </div>
+
+    <!-- 詳細情報テーブル -->
+    <div class="row">
+        <!-- LPGステータス -->
+        <div class="col-md-12 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-hdd-network"></i> LPGステータス</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6>稼働状態</h6>
+                            <span class="badge bg-success fs-6">● 稼働中</span>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>IPアドレス</h6>
+                            <span class="text-info">{{ domains[0].lpg_ip if domains else '192.168.234.2' }}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>接続デバイス数</h6>
+                            <span class="badge bg-primary fs-6">{{ devices_by_ip|length }} IP / {{ devices|length }} サービス</span>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>アップタイム</h6>
+                            <span class="text-success">{{ metrics.uptime|default('N/A') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- デバイス詳細（コンパクト表示） -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-server"></i> デバイス詳細</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>IPアドレス</th>
+                                    <th>サービス</th>
+                                    <th>パス</th>
+                                    <th>ポート</th>
+                                    <th>ドメイン</th>
+                                    <th>状態</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ip, device_group in devices_by_ip.items() %}
+                                    {% for device in device_group %}
+                                    <tr>
+                                        {% if loop.index0 == 0 %}
+                                        <td rowspan="{{ device_group|length }}" class="align-middle">
+                                            <strong>{{ ip }}</strong>
+                                        </td>
+                                        {% endif %}
+                                        <td>{{ device.device_name }}</td>
+                                        <td><code>{{ device.registration_path }}</code></td>
+                                        <td><span class="badge bg-info">{{ device.port }}</span></td>
+                                        <td>{{ device.domain_name|default('N/A') }}</td>
+                                        <td>
+                                            {% if device.status == 'active' %}
+                                            <span class="badge bg-success">稼働中</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">停止</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// SVGのビューポートを動的に調整
+document.addEventListener('DOMContentLoaded', function() {
+    const svg = document.getElementById('topology-svg');
+    const domainCount = {{ domains|length }};
+    const deviceGroupCount = {{ devices_by_ip|length }};
+    
+    // 必要な高さを計算
+    const minHeight = 400;
+    const domainHeight = domainCount * 80 + 200;
+    const deviceHeight = deviceGroupCount * 100 + 200;
+    const requiredHeight = Math.max(minHeight, domainHeight, deviceHeight);
+    
+    // ビューボックスを更新
+    svg.setAttribute('viewBox', `0 0 1200 ${requiredHeight}`);
+});
+</script>
+{% endblock %}

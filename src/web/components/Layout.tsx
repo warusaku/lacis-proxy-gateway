@@ -15,6 +15,7 @@ import {
   NavList,
   Text,
   Octicon,
+  Button,
 } from '@primer/react'
 import { 
   HomeIcon, 
@@ -27,9 +28,12 @@ import {
   MoonIcon,
   SunIcon,
   GraphIcon,
+  RocketIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '@contexts/AuthContext'
+import { useConfig } from '@contexts/ConfigContext'
 import styled from 'styled-components'
+import toast from 'react-hot-toast'
 
 const StyledHeader = styled(Header)`
   padding: 0 16px;
@@ -52,9 +56,11 @@ const Layout: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { deployConfig } = useConfig()
   const [isDarkMode, setIsDarkMode] = useState(
     document.documentElement.getAttribute('data-color-mode') === 'dark'
   )
+  const [isDeploying, setIsDeploying] = useState(false)
 
   const toggleTheme = () => {
     const newMode = isDarkMode ? 'light' : 'dark'
@@ -65,6 +71,22 @@ const Layout: React.FC = () => {
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleDeploy = async () => {
+    if (!confirm('設定を適用しますか？サービスが一時的に停止する可能性があります。')) {
+      return
+    }
+
+    setIsDeploying(true)
+    try {
+      await deployConfig()
+      toast.success('設定が正常に適用されました')
+    } catch (error) {
+      toast.error('デプロイに失敗しました: ' + (error as Error).message)
+    } finally {
+      setIsDeploying(false)
+    }
   }
 
   const navigationItems = [
@@ -87,6 +109,17 @@ const Layout: React.FC = () => {
 
         <Header.Item>
           <Box display="flex" alignItems="center" gap={2}>
+            <Button
+              variant="primary"
+              size="small"
+              leadingIcon={RocketIcon}
+              onClick={handleDeploy}
+              loading={isDeploying}
+              disabled={isDeploying}
+            >
+              {isDeploying ? 'Deploying...' : 'Deploy Changes'}
+            </Button>
+
             <IconButton
               icon={isDarkMode ? SunIcon : MoonIcon}
               aria-label="Toggle theme"

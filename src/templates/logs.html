@@ -6,48 +6,410 @@
 <div class="Subhead">
     <h2 class="Subhead-heading">ログビューアー</h2>
     <div class="Subhead-actions">
+        <select class="form-select mr-2" id="logLevel" onchange="filterLogs()">
+            <option value="all">全てのレベル</option>
+            <option value="error">エラー</option>
+            <option value="warn">警告</option>
+            <option value="info">情報</option>
+            <option value="debug">デバッグ</option>
+        </select>
+        <button class="btn btn-sm mr-2" onclick="clearLogs()">
+            <svg class="octicon mr-1" width="16" height="16" fill="currentColor">
+                <path d="M6.5 1.75V3h3V1.75a.25.25 0 00-.25-.25h-2.5a.25.25 0 00-.25.25zM8 5a1.75 1.75 0 001.75-1.75V1.75C9.75.784 8.966 0 8 0s-1.75.784-1.75 1.75v1.5A1.75 1.75 0 008 5z"/>
+                <path d="M12.5 3h-1v-.25C11.5.784 10.716 0 9.75 0h-3.5C5.284 0 4.5.784 4.5 1.75V3h-1a.5.5 0 000 1h1v8.25c0 .966.784 1.75 1.75 1.75h3.5c.966 0 1.75-.784 1.75-1.75V4h1a.5.5 0 000-1zM6 1.75a.25.25 0 01.25-.25h3.5a.25.25 0 01.25.25V3H6V1.75zm4 10.5H6V4h4v8.25z"/>
+            </svg>
+            クリア
+        </button>
         <button class="btn btn-sm" onclick="refreshLogs()">
+            <svg class="octicon mr-1" width="16" height="16" fill="currentColor">
+                <path d="M1.679 7.932c.412-.621 1.242-1.75 2.366-2.717C5.175 4.242 6.527 3.5 8 3.5c1.473 0 2.824.742 3.955 1.715 1.124.967 1.954 2.096 2.366 2.717a.119.119 0 010 .136c-.412.621-1.242 1.75-2.366 2.717C10.825 11.758 9.473 12.5 8 12.5c-1.473 0-2.824-.742-3.955-1.715C2.921 9.818 2.091 8.689 1.679 8.068a.119.119 0 010-.136zM8 2c-1.981 0-3.67.992-4.933 2.078C1.797 5.169.88 6.423.43 7.1a1.619 1.619 0 000 1.798c.45.678 1.367 1.932 2.637 3.024C4.329 13.008 6.019 14 8 14c1.981 0 3.67-.992 4.933-2.078 1.27-1.092 2.187-2.346 2.637-3.024a1.619 1.619 0 000-1.798c-.45-.678-1.367-1.932-2.637-3.024C11.671 2.992 9.981 2 8 2zm2 6a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
             更新
         </button>
     </div>
 </div>
 
-<div class="Box mt-3">
-    <div class="Box-header">
-        <h3 class="Box-title">プロキシログ（最新50行）</h3>
+<!-- ログ統計 -->
+<div class="d-flex flex-wrap mb-3">
+    <div class="Box mr-3" style="min-width: 150px;">
+        <div class="Box-header">
+            <h3 class="Box-title">ログ統計</h3>
+        </div>
+        <div class="Box-body">
+            <dl class="d-flex">
+                <div class="flex-1 text-center">
+                    <dt class="f6 color-fg-muted">エラー</dt>
+                    <dd class="f3-light color-fg-danger" id="error-count">0</dd>
+                </div>
+                <div class="flex-1 text-center">
+                    <dt class="f6 color-fg-muted">警告</dt>
+                    <dd class="f3-light color-fg-attention" id="warn-count">0</dd>
+                </div>
+                <div class="flex-1 text-center">
+                    <dt class="f6 color-fg-muted">情報</dt>
+                    <dd class="f3-light color-fg-success" id="info-count">0</dd>
+                </div>
+            </dl>
+        </div>
     </div>
     
-    <div class="Box-body" style="max-height: 600px; overflow-y: auto;">
-        {% if logs %}
-        <pre class="log-viewer">{% for line in logs %}{{ line }}{% endfor %}</pre>
-        {% else %}
-        <p class="color-fg-muted">ログがありません</p>
-        {% endif %}
+    <div class="Box" style="min-width: 200px;">
+        <div class="Box-header">
+            <h3 class="Box-title">最終更新</h3>
+        </div>
+        <div class="Box-body">
+            <div class="d-flex flex-items-center">
+                <span class="status-indicator status-healthy mr-2"></span>
+                <span id="last-update" class="f6">{{ current_time_jst }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- システムログ -->
+<div class="Box mb-3">
+    <div class="Box-header">
+        <h3 class="Box-title">システムログ</h3>
+        <div class="Box-header-actions">
+            <label class="form-checkbox">
+                <input type="checkbox" id="autoScroll" checked>
+                <span class="form-checkbox-details">
+                    <span class="f6">自動スクロール</span>
+                </span>
+            </label>
+        </div>
+    </div>
+    
+    <div class="Box-body p-0">
+        <div class="log-container" id="logContainer" style="max-height: 500px; overflow-y: auto;">
+            {% if logs %}
+            <div class="log-viewer" id="logViewer">
+                {% for log_entry in logs %}
+                <div class="log-entry" data-level="{{ log_entry.level|lower }}" data-timestamp="{{ log_entry.timestamp }}">
+                    <span class="log-timestamp">{{ log_entry.timestamp_jst }}</span>
+                    <span class="log-level log-level-{{ log_entry.level|lower }}">{{ log_entry.level }}</span>
+                    <span class="log-message">{{ log_entry.message }}</span>
+                    {% if log_entry.details %}
+                    <details class="log-details">
+                        <summary class="f7 color-fg-muted">詳細を表示</summary>
+                        <pre class="log-details-content">{{ log_entry.details }}</pre>
+                    </details>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="blankslate">
+                <h3 class="blankslate-heading">ログがありません</h3>
+                <p>システムが起動すると、ログがここに表示されます。</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- プロキシアクセスログ -->
+<div class="Box">
+    <div class="Box-header">
+        <h3 class="Box-title">アクセスログ（最新100件）</h3>
+    </div>
+    
+    <div class="Box-body p-0">
+        <div class="table-responsive">
+            <table class="width-full">
+                <thead>
+                    <tr>
+                        <th class="f6 color-fg-muted p-2">時刻（JST）</th>
+                        <th class="f6 color-fg-muted p-2">クライアントIP</th>
+                        <th class="f6 color-fg-muted p-2">メソッド</th>
+                        <th class="f6 color-fg-muted p-2">URL</th>
+                        <th class="f6 color-fg-muted p-2">ステータス</th>
+                        <th class="f6 color-fg-muted p-2">転送先</th>
+                    </tr>
+                </thead>
+                <tbody id="accessLogBody">
+                    {% if access_logs %}
+                    {% for log in access_logs %}
+                    <tr class="access-log-entry">
+                        <td class="p-2 f7 color-fg-muted">{{ log.timestamp_jst }}</td>
+                        <td class="p-2 f7">{{ log.client_ip }}</td>
+                        <td class="p-2">
+                            <span class="Label Label--{{ 'success' if log.method == 'GET' else 'primary' }}">{{ log.method }}</span>
+                        </td>
+                        <td class="p-2 f7">{{ log.url }}</td>
+                        <td class="p-2">
+                            <span class="Label Label--{{ 'success' if log.status < 300 else ('attention' if log.status < 400 else 'danger') }}">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                        <td class="p-2 f7 color-fg-muted">{{ log.upstream }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="p-4 text-center color-fg-muted">アクセスログがありません</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <style>
 .log-viewer {
     background-color: #0d1117;
-    padding: 16px;
-    border-radius: 6px;
     font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.4;
+}
+
+.log-entry {
+    display: flex;
+    align-items: flex-start;
+    padding: 4px 12px;
+    border-bottom: 1px solid #21262d;
+    flex-wrap: wrap;
+}
+
+.log-entry:hover {
+    background-color: #161b22;
+}
+
+.log-timestamp {
+    min-width: 140px;
+    color: #7d8590;
+    margin-right: 12px;
+    font-size: 11px;
+}
+
+.log-level {
+    min-width: 60px;
+    margin-right: 12px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.log-level-error { background-color: #da3633; color: white; }
+.log-level-warn { background-color: #fb8500; color: white; }
+.log-level-info { background-color: #1f6feb; color: white; }
+.log-level-debug { background-color: #6e7681; color: white; }
+
+.log-message {
+    flex: 1;
+    color: #c9d1d9;
+    word-break: break-word;
+}
+
+.log-details {
+    width: 100%;
+    margin-top: 8px;
+    margin-left: 152px;
+}
+
+.log-details-content {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 8px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #8b949e;
     white-space: pre-wrap;
-    word-wrap: break-word;
+}
+
+.access-log-entry:hover {
+    background-color: #f6f8fa;
+}
+
+.table-responsive {
+    border: 1px solid var(--color-border-default);
+    border-radius: 6px;
+}
+
+.table-responsive th {
+    background-color: var(--color-canvas-subtle);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.table-responsive td {
+    border-bottom: 1px solid var(--color-border-muted);
+}
+
+.hidden {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .log-entry {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .log-timestamp, .log-level {
+        margin-bottom: 4px;
+    }
+    
+    .log-details {
+        margin-left: 0;
+    }
 }
 </style>
 
 <script>
-function refreshLogs() {
-    location.reload();
+// ログフィルタリング
+function filterLogs() {
+    const level = document.getElementById('logLevel').value;
+    const entries = document.querySelectorAll('.log-entry');
+    
+    entries.forEach(entry => {
+        if (level === 'all' || entry.dataset.level === level) {
+            entry.classList.remove('hidden');
+        } else {
+            entry.classList.add('hidden');
+        }
+    });
+    
+    updateLogCounts();
 }
+
+// ログ統計更新
+function updateLogCounts() {
+    const visibleEntries = document.querySelectorAll('.log-entry:not(.hidden)');
+    const counts = { error: 0, warn: 0, info: 0, debug: 0 };
+    
+    visibleEntries.forEach(entry => {
+        const level = entry.dataset.level;
+        if (counts.hasOwnProperty(level)) {
+            counts[level]++;
+        }
+    });
+    
+    document.getElementById('error-count').textContent = counts.error;
+    document.getElementById('warn-count').textContent = counts.warn;
+    document.getElementById('info-count').textContent = counts.info;
+}
+
+// ログクリア
+async function clearLogs() {
+    if (!confirm('全てのログをクリアしますか？')) return;
+    
+    try {
+        const response = await fetch('/api/logs/clear', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            document.getElementById('logViewer').innerHTML = '';
+            updateLogCounts();
+            showNotification('ログがクリアされました', 'success');
+        } else {
+            showNotification('ログのクリアに失敗しました', 'error');
+        }
+    } catch (error) {
+        showNotification('ログのクリアに失敗しました', 'error');
+    }
+}
+
+// ログ更新
+async function refreshLogs() {
+    const button = event?.target?.closest('button');
+    if (button) {
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = `
+            <svg class="octicon mr-1 anim-rotate" width="16" height="16" fill="currentColor">
+                <path d="M8 0a8 8 0 110 16A8 8 0 018 0zM7 3a1 1 0 012 0v4a1 1 0 01-2 0V3zm0 8a1 1 0 012 0v2a1 1 0 01-2 0v-2z"/>
+            </svg>
+            更新中...
+        `;
+        
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = originalText;
+            location.reload();
+        }, 500);
+    } else {
+        location.reload();
+    }
+}
+
+// 自動スクロール
+function autoScrollIfEnabled() {
+    const autoScrollCheck = document.getElementById('autoScroll');
+    const logContainer = document.getElementById('logContainer');
+    
+    if (autoScrollCheck && autoScrollCheck.checked && logContainer) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+}
+
+// 日時をJSTに変換するヘルパー関数
+function convertToJST(utcTimestamp) {
+    const date = new Date(utcTimestamp);
+    const jstDate = new Date(date.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+    return jstDate.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// リアルタイム時刻更新
+function updateCurrentTime() {
+    const now = new Date();
+    const jstTime = now.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'Asia/Tokyo'
+    });
+    
+    const lastUpdateElement = document.getElementById('last-update');
+    if (lastUpdateElement) {
+        lastUpdateElement.textContent = jstTime;
+    }
+}
+
+// 初期化
+document.addEventListener('DOMContentLoaded', function() {
+    updateLogCounts();
+    autoScrollIfEnabled();
+    updateCurrentTime();
+    
+    // 時刻を1秒ごとに更新
+    setInterval(updateCurrentTime, 1000);
+});
 
 // 自動更新（30秒ごと）
 setInterval(() => {
     if (document.visibilityState === 'visible') {
-        refreshLogs();
+        // Silent refresh of logs
+        fetch('/api/logs/latest')
+            .then(response => response.json())
+            .then(data => {
+                if (data.logs && data.logs.length > 0) {
+                    // 新しいログエントリを追加
+                    const logViewer = document.getElementById('logViewer');
+                    if (logViewer) {
+                        // ここで新しいログを追加するロジックを実装
+                        // 実際の実装では、バックエンドからの差分データを処理
+                    }
+                }
+            })
+            .catch(error => console.error('Auto refresh error:', error));
     }
 }, 30000);
 </script>

@@ -34,12 +34,6 @@
             padding: 24px;
         }
         
-        .deploy-button {
-            position: fixed;
-            top: 12px;
-            right: 24px;
-            z-index: 100;
-        }
         
         .status-indicator {
             display: inline-block;
@@ -52,6 +46,15 @@
         .status-healthy { background-color: #3fb950; }
         .status-warning { background-color: #d29922; }
         .status-error { background-color: #f85149; }
+        
+        .anim-rotate {
+            animation: rotate 1s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -65,6 +68,14 @@
             <span class="text-small color-fg-muted">System: Healthy</span>
         </div>
         <div class="Header-item">
+            <button class="btn btn-primary btn-sm mr-2" onclick="deployConfig()">
+                <svg class="octicon mr-1" width="16" height="16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                Deploy
+            </button>
+        </div>
+        <div class="Header-item">
             <details class="dropdown details-reset details-overlay">
                 <summary class="btn-sm btn" aria-haspopup="true">
                     {{ session.username }}
@@ -76,14 +87,13 @@
         </div>
     </div>
 
-    <!-- Deploy Button -->
-    <button class="btn btn-primary deploy-button" onclick="deployConfig()">
-        Deploy Changes
-    </button>
 
     <div class="d-flex">
         <!-- Sidebar -->
         <nav class="SideNav" style="width: 250px;">
+            <a class="SideNav-item {% if request.endpoint == 'topology' or request.endpoint == 'index' %}selected{% endif %}" href="/topology">
+                🏠 Home
+            </a>
             <a class="SideNav-item {% if request.endpoint == 'domains' %}selected{% endif %}" href="/domains">
                 🌐 Domains
             </a>
@@ -111,6 +121,18 @@
         async function deployConfig() {
             if (!confirm('設定を適用しますか？')) return;
             
+            const button = document.querySelector('.Header-item button[onclick="deployConfig()"]');
+            const originalText = button.innerHTML;
+            
+            // ボタンを無効化してロード状態に
+            button.disabled = true;
+            button.innerHTML = `
+                <svg class="octicon mr-1 anim-rotate" width="16" height="16" fill="currentColor">
+                    <path d="M8 0a8 8 0 110 16A8 8 0 018 0zM7 3a1 1 0 012 0v4a1 1 0 01-2 0V3zm0 8a1 1 0 012 0v2a1 1 0 01-2 0v-2z"/>
+                </svg>
+                Deploying...
+            `;
+            
             try {
                 const response = await fetch('/api/config/deploy', {
                     method: 'POST',
@@ -119,13 +141,37 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    alert('設定が適用されました');
+                    showNotification('設定が適用されました', 'success');
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    alert('エラー: ' + data.message);
+                    showNotification('エラー: ' + data.message, 'error');
                 }
             } catch (error) {
-                alert('デプロイに失敗しました: ' + error);
+                showNotification('デプロイに失敗しました: ' + error, 'error');
+            } finally {
+                // ボタンを元に戻す
+                button.disabled = false;
+                button.innerHTML = originalText;
             }
+        }
+
+        // 通知機能
+        function showNotification(message, type = 'info') {
+            // 既存の通知を削除
+            const existing = document.querySelector('.flash');
+            if (existing) existing.remove();
+            
+            const flash = document.createElement('div');
+            flash.className = `flash flash-${type === 'error' ? 'error' : type === 'success' ? 'success' : 'warn'}`;
+            flash.textContent = message;
+            flash.style.position = 'fixed';
+            flash.style.top = '80px';
+            flash.style.right = '20px';
+            flash.style.zIndex = '1000';
+            
+            document.body.appendChild(flash);
+            
+            setTimeout(() => flash.remove(), 5000);
         }
     </script>
     {% block scripts %}{% endblock %}

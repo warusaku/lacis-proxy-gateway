@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+# Final check of Caddy and services status
+
+set timeout 30
+set host "192.168.234.2"
+set password "lacis12345@"
+
+puts "=== Final Caddy and Services Status Check ==="
+
+spawn ssh lacissystem@$host
+expect {
+    "password:" {
+        send "$password\r"
+        expect "$ "
+        
+        puts "\n=== Current service status ==="
+        send "ps aux | grep -E '(caddy|python|lpg)' | grep -v grep\r"
+        expect "$ "
+        
+        puts "\n=== Port listening status ==="
+        send "ss -tlnp | grep -E ':(80|443|8080|8443)'\r"
+        expect "$ "
+        
+        puts "\n=== Caddy systemd service status ==="
+        send "systemctl status caddy --no-pager -l\r"
+        expect "$ "
+        
+        puts "\n=== Check if log directory exists ==="
+        send "ls -la /var/log/lpg/ 2>/dev/null || echo 'Log directory not found'\r"
+        expect "$ "
+        
+        puts "\n=== Test localhost HTTP ==="
+        send "curl -s -o /dev/null -w '%{http_code}' http://localhost/ 2>/dev/null || echo 'HTTP test failed'\r"
+        expect "$ "
+        
+        puts "\n=== Test localhost:8080 ==="
+        send "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ 2>/dev/null || echo 'Port 8080 test failed'\r"
+        expect "$ "
+        
+        send "exit\r"
+        expect eof
+    }
+    timeout {
+        puts "\nConnection timeout"
+        exit 1
+    }
+}

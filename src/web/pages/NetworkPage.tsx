@@ -32,6 +32,7 @@ import {
 import { systemAPI } from '@services/api'
 import toast from 'react-hot-toast'
 import styled from 'styled-components'
+import TopologyView from '@components/TopologyView'
 
 interface SystemInfo {
   hostname: string
@@ -191,6 +192,11 @@ const NetworkPage: React.FC = () => {
           {isRefreshing ? '更新中...' : '更新'}
         </Button>
       </HeaderSection>
+
+      {/* ネットワークトポロジー */}
+      <Box mb={4}>
+        <TopologyView />
+      </Box>
 
       {/* システムメトリクス */}
       <MetricsGrid>

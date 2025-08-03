@@ -15,7 +15,12 @@ from lpg_admin import app
 
 # プロキシハンドラーをインポート
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from update_proxy_simple import LPGProxyHandler
+try:
+    from lpg_proxy_enhanced import LPGProxyHandler
+    print("[INFO] Using enhanced proxy handler with config.json support")
+except ImportError:
+    from update_proxy_simple import LPGProxyHandler
+    print("[WARN] Using simple proxy handler (fallback)")
 
 # 設定
 PROXY_PORT = 80
