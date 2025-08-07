@@ -1,0 +1,42 @@
+server {
+    listen 443 ssl;
+    server_name akb001yebraxfqsm9y.dyndns-web.com;
+
+    ssl_certificate /etc/letsencrypt/live/akb001yebraxfqsm9y.dyndns-web.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/akb001yebraxfqsm9y.dyndns-web.com/privkey.pem;
+
+    # LPG Admin UI
+    location /lpg-admin/ {
+        proxy_pass http://127.0.0.1:8443/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        
+        # Remove duplicate /lpg-admin prefix
+        rewrite ^/lpg-admin/lpg-admin/(.*)$ /lpg-admin/$1 permanent;
+        
+        # Handle redirects
+        proxy_redirect / /lpg-admin/;
+        proxy_redirect http://127.0.0.1:8443/ /lpg-admin/;
+        proxy_redirect https://127.0.0.1:8443/ https://$host/lpg-admin/;
+    }
+
+    # LacisDrawBoards
+    location /lacisstack/boards/ {
+        proxy_pass http://192.168.234.10:80/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name akb001yebraxfqsm9y.dyndns-web.com;
+    return 301 https://$server_name$request_uri;
+}

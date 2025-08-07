@@ -1,0 +1,48 @@
+[Unit]
+Description=LPG Admin Interface (Safe Mode with Network Protection)
+After=network-online.target nginx.service
+Wants=network-online.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/lpg/src
+
+# Critical: Force 127.0.0.1 binding to prevent network crashes
+Environment="LPG_ADMIN_HOST=127.0.0.1"
+Environment="LPG_ADMIN_PORT=8443"
+Environment="LPG_SAFE_MODE=1"
+
+# Pre-start safety check - abort if trying to bind to 0.0.0.0
+ExecStartPre=/bin/bash -c 'if [ "$LPG_ADMIN_HOST" = "0.0.0.0" ]; then echo "FATAL: Attempted to bind to 0.0.0.0 - aborting to protect network"; exit 1; fi'
+ExecStartPre=/bin/bash -c 'echo "Starting LPG Admin on $LPG_ADMIN_HOST:$LPG_ADMIN_PORT"'
+
+# Main service - Use safe wrapper for additional protection
+ExecStart=/usr/bin/python3 /opt/lpg/src/lpg_safe_wrapper.py
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=3
+StartLimitInterval=60
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/lpg /var/log/lpg
+
+# Resource limits
+LimitNOFILE=1024
+CPUQuota=50%
+MemoryLimit=512M
+
+# Kill settings
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

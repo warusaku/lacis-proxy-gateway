@@ -1,38 +1,105 @@
+# LPG (Lacis Proxy Gateway) .gitignore
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+dist/
+*.egg-info/
+*.pyc
+
+# Virtual Environment
 env/
 venv/
 .venv
+ENV/
 
 # Configuration
 config.json
-\!config.json.sample
+!config.json.sample
+config.local.json
+.env
+.env.local
+secrets/
 
 # Logs
 *.log
 logs/
+log/
+/var/log/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Temporary files
 *.tmp
 *.bak
+*.backup
+*.old
+tmp/
+temp/
+cache/
 *~
 
 # SSL certificates
 *.pem
 *.key
 *.crt
-EOF < /dev/null
+*.csr
+ssl/
+certificates/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+test_screenshots/
+test_env/
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Backup directories
+*.backup/
+backup/
+backups/
+src.backup*/
+
+# Archive directories
+archive/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Disk images (too large)
+diskimage/
+*.img
+*.iso
+
+# Runtime files
+*.pid
+*.sock
+/var/run/
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+
+# Local development
+local_config/
+dev_config/

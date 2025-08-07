@@ -1,0 +1,109 @@
+{% extends "base_unified.html" %}
+{% block title %}Network Status - Lacis Proxy Gateway{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* Card text color fix */
+    .card h3 {
+        color: #FFFFFF !important;
+    }
+    
+    .card-body {
+        color: #FFFFFF !important;
+    }
+    
+    .card-body .text-muted {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    
+    .card-header {
+        color: #FFFFFF !important;
+    }
+    
+    .card-header h5 {
+        color: #FFFFFF !important;
+    }
+    
+    .table {
+        color: #FFFFFF !important;
+    }
+    
+    .table th,
+    .table td {
+        color: #FFFFFF !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1><i class="fas fa-network-wired"></i> Network Status</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ stats.total_connections }}</h3>
+                    <small class="text-muted">Active Connections</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ stats.bandwidth }}</h3>
+                    <small class="text-muted">Bandwidth Usage</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ stats.latency }}</h3>
+                    <small class="text-muted">Average Latency</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ stats.packet_loss }}</h3>
+                    <small class="text-muted">Packet Loss</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Active Connections</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Protocol</th>
+                            <th>Duration</th>
+                            <th>Bytes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for conn in connections %}
+                        <tr>
+                            <td>{{ conn.source }}</td>
+                            <td>{{ conn.destination }}</td>
+                            <td>{{ conn.protocol }}</td>
+                            <td>{{ conn.duration }}</td>
+                            <td>{{ conn.bytes }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

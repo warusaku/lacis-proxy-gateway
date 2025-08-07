@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - LacisProxyGateway</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6.4.0 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_head %}{% endblock %}
+    <style>
+        :root {
+            /* Color Palette - Apple-like with low saturation */
+            --bg-primary: #000000;
+            --bg-secondary: #1d1d1f;
+            --bg-tertiary: #2d2d30;
+            --bg-card: #161618;
+            --border-color: #3a3a3c;
+            --border-subtle: #2a2a2c;
+            --text-primary: #f5f5f7;
+            --text-secondary: #86868b;
+            --text-muted: #636366;
+            --accent-blue: #0071e3;
+            --accent-green: #30d158;
+            --accent-red: #ff453a;
+            --accent-orange: #ff9f0a;
+            --accent-purple: #bf5af2;
+            --shadow-subtle: 0 2px 10px rgba(0, 0, 0, 0.2);
+            --shadow-strong: 0 10px 40px rgba(0, 0, 0, 0.3);
+            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.15);
+            
+            /* Typography */
+            --font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-size-xs: 0.75rem;
+            --font-size-small: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-large: 1.25rem;
+            --font-size-xlarge: 1.5rem;
+            --font-size-xxlarge: 2rem;
+            --font-size-huge: 2.5rem;
+            
+            /* Font Weights */
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-bold: 700;
+            
+            /* Spacing */
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 1rem;
+            --spacing-md: 1.5rem;
+            --spacing-lg: 2rem;
+            --spacing-xl: 3rem;
+            --spacing-xxl: 4rem;
+            
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            
+            /* Content Width */
+            --content-max-width: 1200px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header Styles */
+        .header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 var(--spacing-lg);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background-color: rgba(29, 29, 31, 0.9);
+        }
+        
+        .header-content {
+            max-width: var(--content-max-width);
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-large);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        
+        .logo-section i {
+            color: var(--accent-blue);
+            font-size: var(--font-size-xlarge);
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .btn {
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-small);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            border: none;
+            font-family: var(--font-family);
+        }
+        
+        .btn-deploy {
+            background-color: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+        
+        .btn-deploy:hover {
+            background-color: #e68900;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-subtle);
+        }
+        
+        .btn-logout {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-logout:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+        
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            flex: 1;
+            max-width: var(--content-max-width);
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            width: 240px;
+            padding: var(--spacing-lg) 0;
+            border-right: 1px solid var(--border-subtle);
+        }
+        
+        .nav-list {
+            list-style: none;
+        }
+        
+        .nav-item {
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-normal);
+            transition: all 0.2s ease;
+            border-radius: 0;
+            position: relative;
+        }
+        
+        .nav-link:hover {
+            color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .nav-link.active {
+            color: var(--accent-blue);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 24px;
+            background-color: var(--accent-blue);
+            border-radius: 0 2px 2px 0;
+        }
+        
+        .nav-link i {
+            font-size: var(--font-size-large);
+            width: 24px;
+            text-align: center;
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: var(--spacing-xl);
+            overflow-y: auto;
+        }
+        
+        .page-header {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .page-title {
+            font-size: var(--font-size-huge);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+            letter-spacing: -0.02em;
+        }
+        
+        .page-subtitle {
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+        }
+        
+        /* Card Styles */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-card);
+        }
+        
+        .card-header {
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        
+        .card-title {
+            font-size: var(--font-size-large);
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        /* Form Styles */
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .form-label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: var(--font-size-small);
+            margin-bottom: var(--spacing-xs);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: var(--spacing-sm);
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+            font-family: var(--font-family);
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+            background-color: var(--bg-secondary);
+        }
+        
+        /* Table Styles */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: var(--spacing-sm);
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        
+        .table th {
+            font-weight: var(--font-weight-medium);
+            color: var(--text-secondary);
+            font-size: var(--font-size-small);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* Badge Styles */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem var(--spacing-xs);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+        }
+        
+        .badge-success {
+            background-color: rgba(48, 209, 88, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(48, 209, 88, 0.2);
+        }
+        
+        .badge-danger {
+            background-color: rgba(255, 69, 58, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(255, 69, 58, 0.2);
+        }
+        
+        .badge-warning {
+            background-color: rgba(255, 159, 10, 0.1);
+            color: var(--accent-orange);
+            border: 1px solid rgba(255, 159, 10, 0.2);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-subtle);
+                padding: var(--spacing-md) 0;
+            }
+            
+            .nav-list {
+                display: flex;
+                overflow-x: auto;
+                padding: 0 var(--spacing-md);
+                gap: var(--spacing-xs);
+            }
+            
+            .nav-item {
+                margin: 0;
+            }
+            
+            .nav-link {
+                white-space: nowrap;
+                padding: var(--spacing-xs) var(--spacing-sm);
+            }
+            
+            .nav-link.active::before {
+                display: none;
+            }
+            
+            .main-content {
+                padding: var(--spacing-md);
+            }
+        }
+        
+        /* Utility Classes */
+        .text-muted {
+            color: var(--text-muted);
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mb-0 { margin-bottom: 0; }
+        .mb-1 { margin-bottom: var(--spacing-xs); }
+        .mb-2 { margin-bottom: var(--spacing-sm); }
+        .mb-3 { margin-bottom: var(--spacing-md); }
+        .mb-4 { margin-bottom: var(--spacing-lg); }
+        
+        .mt-0 { margin-top: 0; }
+        .mt-1 { margin-top: var(--spacing-xs); }
+        .mt-2 { margin-top: var(--spacing-sm); }
+        .mt-3 { margin-top: var(--spacing-md); }
+        .mt-4 { margin-top: var(--spacing-lg); }
+        
+        .d-flex { display: flex; }
+        .align-items-center { align-items: center; }
+        .justify-content-between { justify-content: space-between; }
+        .gap-1 { gap: var(--spacing-xs); }
+        .gap-2 { gap: var(--spacing-sm); }
+        .gap-3 { gap: var(--spacing-md); }
+    </style>
+    {% block extra_styles %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="{{ url_for('index') }}" class="logo-section">
+                <i class="fas fa-shield-alt"></i>
+                <span>LacisProxyGateway</span>
+            </a>
+            <div class="header-actions">
+                {% if deploy_button %}
+                <button class="btn btn-deploy" onclick="deployChanges()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Deploy Changes</span>
+                </button>
+                {% endif %}
+                <a href="/lpg-admin/logout" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="main-container">
+        <nav class="sidebar">
+            <ul class="nav-list">
+                <li class="nav-item">
+                    <a href="{{ url_for('topology') }}" class="nav-link {% if active_page == 'topology' %}active{% endif %}">
+                        <i class="fas fa-project-diagram"></i>
+                        <span>Topology</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('domains') }}" class="nav-link {% if active_page == 'domains' %}active{% endif %}">
+                        <i class="fas fa-globe"></i>
+                        <span>Domains</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('devices') }}" class="nav-link {% if active_page == 'devices' %}active{% endif %}">
+                        <i class="fas fa-server"></i>
+                        <span>Devices</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('network') }}" class="nav-link {% if active_page == 'network' %}active{% endif %}">
+                        <i class="fas fa-network-wired"></i>
+                        <span>Network</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('logs') }}" class="nav-link {% if active_page == 'logs' %}active{% endif %}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Logs</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('settings') }}" class="nav-link {% if active_page == 'settings' %}active{% endif %}">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <script>
+        function deployChanges() {
+            if (confirm('Apply settings and restart the proxy?')) {
+                fetch('/api/config/deploy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'success') {
+                        alert('Settings applied. The proxy will be restarted.');
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Communication error: ' + error);
+                });
+            }
+        }
+    </script>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

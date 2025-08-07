@@ -1,0 +1,215 @@
+{% extends "base_unified.html" %}
+{% block title %}Logs - Lacis Proxy Gateway{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .log-container {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        margin-top: var(--spacing-lg);
+    }
+    
+    .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .log-filters {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .filter-chip {
+        padding: var(--spacing-xs) var(--spacing-md);
+        border-radius: var(--radius-full);
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-subtle);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .filter-chip:hover {
+        border-color: var(--accent-primary);
+    }
+    
+    .filter-chip.active {
+        background-color: var(--accent-primary);
+        color: white;
+        border-color: var(--accent-primary);
+    }
+    
+    .log-content {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        font-size: var(--font-size-small);
+        max-height: 600px;
+        overflow-y: auto;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+    }
+    
+    .log-entry {
+        margin-bottom: var(--spacing-xs);
+        padding: var(--spacing-xs);
+        border-radius: var(--radius-sm);
+        display: flex;
+        gap: var(--spacing-md);
+        align-items: flex-start;
+    }
+    
+    .log-entry:hover {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    
+    .log-timestamp {
+        color: var(--text-secondary);
+        white-space: nowrap;
+        min-width: 180px;
+    }
+    
+    .log-type {
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    .log-type.INFO {
+        background-color: rgba(48, 209, 88, 0.1);
+        color: var(--accent-green);
+    }
+    
+    .log-type.LOGIN {
+        background-color: rgba(0, 113, 227, 0.1);
+        color: var(--accent-blue);
+    }
+    
+    .log-type.ERROR {
+        background-color: rgba(255, 69, 58, 0.1);
+        color: var(--accent-red);
+    }
+    
+    .log-type.ACCESS {
+        background-color: rgba(255, 159, 10, 0.1);
+        color: #ff9f0a;
+    }
+    
+    .log-message {
+        flex: 1;
+        color: var(--text-primary);
+        word-break: break-word;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: var(--spacing-xxl);
+        color: var(--text-secondary);
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
+        opacity: 0.2;
+        margin-bottom: var(--spacing-md);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-file-alt"></i>
+        System Logs
+    </h1>
+    <p class="page-subtitle">View system activity and access logs</p>
+</div>
+
+<div class="log-container">
+    <div class="log-header">
+        <h2 class="card-title">Recent Activity</h2>
+        <div>
+            <button class="btn btn-sm btn-secondary" onclick="refreshLogs()">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <div class="log-filters">
+        <div class="filter-chip active" data-filter="all">
+            <i class="fas fa-list"></i> All
+        </div>
+        <div class="filter-chip" data-filter="LOGIN">
+            <i class="fas fa-sign-in-alt"></i> Login
+        </div>
+        <div class="filter-chip" data-filter="ACCESS">
+            <i class="fas fa-globe"></i> Access
+        </div>
+        <div class="filter-chip" data-filter="ERROR">
+            <i class="fas fa-exclamation-circle"></i> Errors
+        </div>
+        <div class="filter-chip" data-filter="INFO">
+            <i class="fas fa-info-circle"></i> Info
+        </div>
+    </div>
+    
+    <div class="log-content" id="logContent">
+        {% if logs %}
+            {% for log in logs %}
+            <div class="log-entry" data-type="{{ log.type }}">
+                <span class="log-timestamp">{{ log.timestamp|jst_time }}</span>
+                <span class="log-type {{ log.type }}">{{ log.type }}</span>
+                <span class="log-message">{{ log.message }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h3>No logs available</h3>
+                <p>System logs will appear here once activity is recorded</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter functionality
+    const filterChips = document.querySelectorAll('.filter-chip');
+    const logEntries = document.querySelectorAll('.log-entry');
+    
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            // Update active chip
+            filterChips.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.dataset.filter;
+            
+            // Filter log entries
+            logEntries.forEach(entry => {
+                if (filter === 'all' || entry.dataset.type === filter) {
+                    entry.style.display = 'flex';
+                } else {
+                    entry.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+
+function refreshLogs() {
+    location.reload();
+}
+
+// Convert timestamp to JST in template filter
+</script>
+{% endblock %}

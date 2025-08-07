@@ -1,0 +1,233 @@
+{% extends "base_unified.html" %}
+{% block title %}Domains - Lacis Proxy Gateway{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .domain-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
+        transition: all 0.3s ease;
+    }
+    
+    .domain-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .domain-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .domain-name {
+        font-size: var(--font-size-large);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+    }
+    
+    .domain-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-md);
+        color: var(--text-secondary);
+        font-size: var(--font-size-small);
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+    }
+    
+    .info-icon {
+        opacity: 0.5;
+    }
+    
+    .add-domain-btn {
+        background-color: var(--accent-primary);
+        color: white;
+        border: none;
+        padding: var(--spacing-sm) var(--spacing-lg);
+        border-radius: var(--radius-full);
+        font-weight: var(--font-weight-medium);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .add-domain-btn:hover {
+        background-color: var(--accent-primary-hover);
+        transform: translateY(-1px);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: var(--spacing-xxl);
+        color: var(--text-secondary);
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
+        opacity: 0.2;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    /* Modal input text color fix */
+    .modal-content .form-control {
+        color: #FFFFFF !important;
+    }
+    
+    .modal-content .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .modal-content .form-control:focus {
+        color: #FFFFFF !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-globe"></i>
+        Domain Management
+    </h1>
+    <p class="page-subtitle">Manage your registered domains and their configurations</p>
+</div>
+
+<div class="action-bar">
+    <button class="add-domain-btn" onclick="showAddDomainModal()">
+        <i class="fas fa-plus"></i> Add Domain
+    </button>
+</div>
+
+<div class="domains-container">
+    {% if domains %}
+        {% for domain in domains %}
+        <div class="domain-card">
+            <div class="domain-header">
+                <h3 class="domain-name">{{ domain.name }}</h3>
+                <div class="domain-actions">
+                    <button class="btn btn-sm btn-icon" onclick="editDomain('{{ domain.name }}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-icon text-danger" onclick="deleteDomain('{{ domain.name }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="domain-info">
+                <div class="info-item">
+                    <i class="fas fa-network-wired info-icon"></i>
+                    <span>Subnet: {{ domain.subnet }}</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-server info-icon"></i>
+                    <span>{{ domain.device_count }} device{% if domain.device_count != 1 %}s{% endif %}</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-circle info-icon" style="color: var(--accent-green);"></i>
+                    <span>{{ domain.status|capitalize }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-globe"></i>
+            </div>
+            <h3>No Domains Registered</h3>
+            <p>Click "Add Domain" to register your first domain</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Domain Modal -->
+<div class="modal fade" id="addDomainModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Domain</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDomainForm">
+                    <div class="mb-3">
+                        <label for="domainName" class="form-label">Domain Name</label>
+                        <input type="text" class="form-control" id="domainName" placeholder="example.com" required>
+                        <div class="form-text">Enter the domain name without protocol</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="domainSubnet" class="form-label">Allowed Subnet</label>
+                        <input type="text" class="form-control" id="domainSubnet" placeholder="192.168.1.0/24" required>
+                        <div class="form-text">CIDR notation for allowed IP range</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addDomain()">Add Domain</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAddDomainModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addDomainModal'));
+    modal.show();
+}
+
+function addDomain() {
+    const domainName = document.getElementById('domainName').value;
+    const subnet = document.getElementById('domainSubnet').value;
+    
+    if (!domainName || !subnet) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/api/domains', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            domain: domainName,
+            subnet: subnet
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error adding domain: ' + error);
+    });
+}
+
+function editDomain(domainName) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality will be implemented soon');
+}
+
+function deleteDomain(domainName) {
+    if (!confirm(`Are you sure you want to delete domain "${domainName}"?`)) {
+        return;
+    }
+    
+    // TODO: Implement delete functionality
+    alert('Delete functionality will be implemented soon');
+}
+</script>
+{% endblock %}

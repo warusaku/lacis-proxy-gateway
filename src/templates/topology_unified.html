@@ -1,0 +1,849 @@
+{% extends "base_unified.html" %}
+
+{% block title %}Topology{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .topology-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    .stat-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-card);
+    }
+    
+    .stat-label {
+        font-size: var(--font-size-small);
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .stat-value {
+        font-size: var(--font-size-xxlarge);
+        font-weight: var(--font-weight-bold);
+        color: var(--text-primary);
+        line-height: 1;
+    }
+    
+    .stat-icon {
+        float: right;
+        font-size: var(--font-size-xlarge);
+        opacity: 0.2;
+    }
+    
+    .topology-map {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        min-height: 600px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    #topology-svg {
+        width: 100%;
+        height: 600px;
+    }
+    
+    /* D3.js Styles for Mindmap */
+    .node {
+        cursor: pointer;
+    }
+    
+    .node-circle {
+        transition: all 0.3s ease;
+    }
+    
+    .node-circle:hover {
+        filter: brightness(1.2);
+    }
+    
+    .node-text {
+        font-size: var(--font-size-small);
+        font-family: var(--font-family);
+        pointer-events: none;
+        user-select: none;
+    }
+    
+    .node-label {
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-medium);
+        fill: var(--text-primary);
+    }
+    
+    .node-sublabel {
+        font-size: var(--font-size-xs);
+        fill: var(--text-secondary);
+    }
+    
+    .link {
+        fill: none;
+        stroke-width: 2;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+    }
+    
+    .link-active {
+        stroke: #d73a49;  /* 低彩度赤 */
+    }
+    
+    .link-inactive {
+        stroke: var(--text-muted);
+        stroke-dasharray: 5,5;
+    }
+    
+    .access-badge {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+    }
+    
+    .device-table {
+        margin-top: var(--spacing-xl);
+    }
+    
+    .device-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+        padding: var(--spacing-sm);
+        border-bottom: 1px solid var(--border-subtle);
+        align-items: center;
+    }
+    
+    .device-row:hover {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    
+    .device-info {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+    
+    .device-icon {
+        width: 40px;
+        height: 40px;
+        background-color: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: var(--font-size-large);
+    }
+    
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: var(--spacing-xs);
+    }
+    
+    .status-active {
+        background-color: var(--accent-green);
+        box-shadow: 0 0 4px var(--accent-green);
+    }
+    
+    .status-inactive {
+        background-color: var(--text-muted);
+    }
+    
+    /* トポロジーマップのスクロール設定 */
+    .topology-map {
+        max-height: 600px;
+        overflow: auto;
+        position: relative;
+    }
+    
+    /* ノードスタイル */
+    .node-card {
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+    
+    .node-label {
+        fill: #f0f6fc;
+    }
+    
+    .node-sublabel {
+        fill: #8b949e;
+    }
+    
+    .access-badge {
+        font-weight: bold;
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-project-diagram"></i>
+        Network Topology
+    </h1>
+    <p class="page-subtitle">System connection status and traffic overview</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <i class="fas fa-server stat-icon"></i>
+        <div class="stat-label">Connected Devices</div>
+        <div class="stat-value" id="device-count">{{ devices|length }}</div>
+    </div>
+    <div class="stat-card">
+        <i class="fas fa-chart-line stat-icon"></i>
+        <div class="stat-label">Active Sessions</div>
+        <div class="stat-value" id="active-sessions">{{ metrics.active_connections }}</div>
+    </div>
+    <div class="stat-card">
+        <i class="fas fa-clock stat-icon"></i>
+        <div class="stat-label">System Uptime</div>
+        <div class="stat-value" id="uptime">{{ metrics.uptime }}</div>
+    </div>
+    <div class="stat-card">
+        <i class="fas fa-tachometer-alt stat-icon"></i>
+        <div class="stat-label">Bandwidth Usage</div>
+        <div class="stat-value" id="bandwidth">{{ metrics.get('bandwidth_usage', '0') }}%</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-network-wired"></i>
+            Network Configuration
+        </h2>
+    </div>
+    <div class="topology-map">
+        <svg id="topology-svg"></svg>
+    </div>
+</div>
+
+<div class="card device-table">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-list"></i>
+            Device Details
+        </h2>
+    </div>
+    <div class="device-row" style="font-weight: var(--font-weight-medium); color: var(--text-secondary);">
+        <div>Device</div>
+        <div>IP Address</div>
+        <div>Port</div>
+        <div>Domain</div>
+        <div>Status</div>
+    </div>
+    <div id="device-list"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // デバイスデータ
+        const devices = {{ devices | tojson | safe }};
+        const domains = {{ domains | tojson | safe }};
+        
+        // デバッグ用
+        window.devices = devices;
+        window.domains = domains;
+        console.log('Devices loaded:', devices.length);
+        console.log('Domains loaded:', domains.length);
+        
+        // データ型確認
+        console.log('Devices is array:', Array.isArray(devices));
+        console.log('Domains is array:', Array.isArray(domains));
+    
+    // デバイスをフィルタリング（Internetノードは除外）
+    const filteredDevices = devices.filter(d => {
+        // nameとdevice_nameの両方をチェック
+        const deviceName = (d.name || d.device_name || '').toLowerCase();
+        const deviceId = (d.id || '').toLowerCase();
+        // internetやverify-testを含むものを除外
+        return !deviceName.includes('internet') && 
+               !deviceId.includes('verify-test') &&
+               !deviceName.includes('verify-test');
+    });
+    
+    // デバイスが0の場合のデバッグ
+    if (filteredDevices.length === 0) {
+        console.error('No devices found after filtering. Original devices:', devices);
+    }
+    
+    // デバッグ用の表示
+    console.log('Original devices:', devices);
+    console.log('Filtered devices:', filteredDevices);
+    console.log('Domains:', domains);
+    
+    // カードサイズを最初に定義（後で使用するため）
+    const cardWidth = 240;  // 160 * 1.5
+    const cardHeight = 80;
+    
+    // SVG設定
+    const width = document.getElementById('topology-svg').clientWidth;
+    // デバイス数に応じて高さを調整（mindmeister風の間隔）
+    const minHeight = 600;
+    const deviceSpacingHeight = 120; // カード高さ80px + 上下マージン40px
+    const requiredHeight = Math.max(
+        filteredDevices.length * deviceSpacingHeight + 100, // デバイス用の高さ
+        domains.length * 100 + 100  // ドメイン用の高さ
+    );
+    const height = Math.max(minHeight, requiredHeight);
+    
+    const svg = d3.select('#topology-svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    const g = svg.append('g');
+    
+    // ズーム機能
+    const zoom = d3.zoom()
+        .scaleExtent([0.5, 3])
+        .on('zoom', (event) => {
+            g.attr('transform', event.transform);
+        });
+    
+    svg.call(zoom);
+    
+    // レイヤーを分けて線をノードの後ろに描画
+    const linkLayer = g.append('g').attr('class', 'link-layer');
+    const nodeLayer = g.append('g').attr('class', 'node-layer');
+    
+    // LPGノード（中央）
+    const lpgNode = {
+        id: 'lpg',
+        name: 'Lacis Proxy Gateway',
+        x: width / 2,
+        y: height / 2,
+        type: 'gateway',
+        ip: '192.168.234.2',
+        status: 'active'
+    };
+    
+    // デバイス数を更新
+    document.getElementById('device-count').textContent = filteredDevices.length;
+    
+    // mindmeister風のレイアウト設定（300pxのスペースを確保）
+    const lpgX = width * 0.5;                // LPGは中央
+    const leftX = lpgX - 300 - cardWidth/2;  // LPGから左に300px + カード幅の半分
+    const rightX = lpgX + 300 + cardWidth/2; // LPGから右に300px + カード幅の半分
+    
+    // デバイスとドメインの垂直間隔を計算
+    const deviceSpacing = deviceSpacingHeight; // 上で定義済み
+    const domainSpacing = 100; // ドメイン間の間隔
+    
+    // LPGノードの位置を調整（デバイスとドメインの中心に配置）
+    const totalDeviceHeight = filteredDevices.length * deviceSpacing;
+    const totalDomainHeight = domains.length * domainSpacing;
+    const maxHeight = Math.max(totalDeviceHeight, totalDomainHeight);
+    
+    // LPGのY座標を計算（全体の中心）
+    lpgNode.x = lpgX;
+    lpgNode.y = Math.max(height / 2, maxHeight / 2);
+    
+    // ドメインを左側に配置（LPGと垂直に整列）
+    const domainStartY = lpgNode.y - (domains.length - 1) * domainSpacing / 2;
+    domains.forEach((domain, i) => {
+        domain.x = leftX;
+        domain.y = domainStartY + i * domainSpacing;
+        domain.type = 'domain';
+    });
+    
+    // デバイスを右側に配置（階層的に配置）
+    const deviceStartY = lpgNode.y - (filteredDevices.length - 1) * deviceSpacing / 2;
+    filteredDevices.forEach((device, i) => {
+        device.x = rightX;
+        device.y = deviceStartY + i * deviceSpacing;
+    });
+    
+    // mindmeister風の曲線パスの生成関数
+    function createPath(source, target) {
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        
+        // ノードのエッジを考慮した開始・終了点の調整（すべてカードスタイル）
+        let startX = source.x;
+        let endX = target.x;
+        
+        // すべてのノードはカードスタイルなので、端から線を開始/終了
+        if (dx > 0) {
+            // source が左側、target が右側
+            startX = source.x + cardWidth/2;  // ソースカードの右端
+            endX = target.x - cardWidth/2;    // ターゲットカードの左端
+        } else if (dx < 0) {
+            // source が右側、target が左側
+            startX = source.x - cardWidth/2;  // ソースカードの左端
+            endX = target.x + cardWidth/2;    // ターゲットカードの右端
+        }
+        
+        // mindmeister風の滑らかな曲線
+        const controlOffset = Math.abs(endX - startX) * 0.5;
+        const midX = startX + (endX - startX) * 0.5;
+        
+        return `M${startX},${source.y} C${startX + controlOffset},${source.y} ${endX - controlOffset},${target.y} ${endX},${target.y}`;
+    }
+    
+    // ドメインとLPGの接続線を描画（linkLayerに）
+    const domainLinks = linkLayer.selectAll('.domain-link')
+        .data(domains)
+        .enter()
+        .append('path')
+        .attr('class', 'link domain-link')
+        .attr('d', d => createPath(d, lpgNode))
+        .attr('stroke', '#d73a49')  // 低彩度赤
+        .style('stroke-width', 2)
+        .style('fill', 'none');
+    
+    // デバイスとLPGの接続線を描画（linkLayerに）
+    const deviceLinks = linkLayer.selectAll('.device-link')
+        .data(filteredDevices)
+        .enter()
+        .append('path')
+        .attr('class', d => `link device-link ${d.status === 'active' ? 'link-active' : 'link-inactive'}`)
+        .attr('d', d => createPath(lpgNode, d))
+        .attr('stroke', d => d.status === 'active' ? '#d73a49' : '#636366')  // 低彩度赤
+        .style('stroke-width', 2)
+        .style('fill', 'none');
+    
+    // LPGノードグループ（nodeLayerに）- カードスタイル
+    const lpgGroup = nodeLayer.append('g')
+        .attr('class', 'node lpg-node')
+        .attr('transform', `translate(${lpgNode.x},${lpgNode.y})`);
+    
+    // LPGカード背景
+    lpgGroup.append('rect')
+        .attr('x', -cardWidth/2)
+        .attr('y', -cardHeight/2)
+        .attr('width', cardWidth)
+        .attr('height', cardHeight)
+        .attr('rx', 8)
+        .attr('fill', '#0071e3')
+        .attr('stroke', '#0051a3')
+        .attr('stroke-width', 3)
+        .attr('class', 'node-card');
+    
+    // ステータスインジケーター
+    lpgGroup.append('circle')
+        .attr('cx', -cardWidth/2 + 15)
+        .attr('cy', -cardHeight/2 + 15)
+        .attr('r', 4)
+        .attr('fill', '#34d058')
+        .attr('class', 'status-indicator');
+    
+    // LPGアイコン
+    lpgGroup.append('text')
+        .attr('x', -cardWidth/2 + 45)
+        .attr('y', 5)
+        .attr('text-anchor', 'middle')
+        .attr('font-family', 'Font Awesome 6 Free')
+        .attr('font-weight', '900')
+        .attr('font-size', '24px')
+        .attr('fill', 'white')
+        .text('\uf542'); // fa-shield-alt
+    
+    // LPG情報グループ
+    const lpgInfo = lpgGroup.append('g')
+        .attr('class', 'lpg-info');
+    
+    // LPGラベル
+    lpgInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', -20)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-label')
+        .attr('font-weight', '600')
+        .attr('font-size', '14px')
+        .attr('fill', 'white')
+        .text('Lacis Proxy Gateway');
+    
+    // IPアドレス
+    lpgInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 0)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#b8e3ff')
+        .text(`IP: ${lpgNode.ip}`);
+    
+    // ポート情報
+    lpgInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 15)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#b8e3ff')
+        .text('Admin Port: 8443');
+    
+    // 稼働状態
+    lpgInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 30)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-status')
+        .attr('font-size', '11px')
+        .attr('fill', '#34d058')
+        .text('稼働中');
+    
+    // 総アクセス数バッジ
+    const totalAccess = {{ lpg_access_count }};
+    if (totalAccess > 0) {
+        const lpgBadge = lpgGroup.append('g')
+            .attr('transform', `translate(${cardWidth/2 - 20}, ${-cardHeight/2 + 20})`);
+        
+        lpgBadge.append('circle')
+            .attr('r', 12)
+            .attr('fill', '#ff453a');
+        
+        lpgBadge.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', 4)
+            .attr('fill', 'white')
+            .attr('class', 'access-badge')
+            .text(totalAccess);
+    }
+    
+    // ドメインノード（nodeLayerに）- カードスタイル
+    const domainGroups = nodeLayer.selectAll('.domain-node')
+        .data(domains)
+        .enter()
+        .append('g')
+        .attr('class', 'node domain-node')
+        .attr('transform', d => `translate(${d.x},${d.y})`);
+    
+    // ドメインカード背景
+    domainGroups.append('rect')
+        .attr('x', -cardWidth/2)
+        .attr('y', -cardHeight/2)
+        .attr('width', cardWidth)
+        .attr('height', cardHeight)
+        .attr('rx', 8)
+        .attr('fill', '#22272e')
+        .attr('stroke', '#444c56')
+        .attr('stroke-width', 2)
+        .attr('class', 'node-card');
+    
+    // ステータスインジケーター（ドメインは常にアクティブ）
+    domainGroups.append('circle')
+        .attr('cx', -cardWidth/2 + 15)
+        .attr('cy', -cardHeight/2 + 15)
+        .attr('r', 4)
+        .attr('fill', '#34d058')
+        .attr('class', 'status-indicator');
+    
+    // ドメインアイコン
+    domainGroups.append('text')
+        .attr('x', -cardWidth/2 + 45)
+        .attr('y', 5)
+        .attr('text-anchor', 'middle')
+        .attr('font-family', 'Font Awesome 6 Free')
+        .attr('font-weight', '900')
+        .attr('font-size', '24px')
+        .attr('fill', '#8b949e')
+        .text('\uf0ac'); // fa-globe
+    
+    // ドメイン情報グループ
+    const domainInfo = domainGroups.append('g')
+        .attr('class', 'domain-info');
+    
+    // ドメイン名
+    domainInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', -20)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-label')
+        .attr('font-weight', '600')
+        .attr('font-size', '14px')
+        .attr('fill', '#f0f6fc')
+        .text(d => {
+            const name = d.domain_name || d.name || 'Domain';
+            return name.length > 20 ? name.substring(0, 18) + '...' : name;
+        });
+    
+    // パス情報
+    domainInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 0)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#8b949e')
+        .text(d => {
+            const path = d.path || '/';
+            return path.length > 25 ? `Path: ${path.substring(0, 20)}...` : `Path: ${path}`;
+        });
+    
+    // アップストリーム
+    domainInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 15)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#8b949e')
+        .text(d => {
+            const upstream = d.upstream || '-';
+            return upstream.length > 22 ? upstream.substring(0, 20) + '...' : upstream;
+        });
+    
+    // デバイス数
+    domainInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 30)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#8b949e')
+        .text(d => `${d.device_count || 0} devices`);
+    
+    // デバイスノード（nodeLayerに）
+    const nodeGroups = nodeLayer.selectAll('.device-node')
+        .data(filteredDevices)
+        .enter()
+        .append('g')
+        .attr('class', 'node device-node')
+        .attr('transform', d => `translate(${d.x},${d.y})`);
+    nodeGroups.append('rect')
+        .attr('x', -cardWidth/2)  // -120
+        .attr('y', -cardHeight/2) // -40
+        .attr('width', cardWidth)
+        .attr('height', cardHeight)
+        .attr('rx', 8)
+        .attr('fill', '#1c2128')
+        .attr('stroke', d => d.status === 'active' ? '#d73a49' : '#636366')
+        .attr('stroke-width', 2)
+        .attr('class', 'node-card');
+    
+    // ステータスインジケーター（小さい円）
+    nodeGroups.append('circle')
+        .attr('cx', -cardWidth/2 + 15)  // 左端から15px
+        .attr('cy', -cardHeight/2 + 15) // 上端から15px
+        .attr('r', 4)
+        .attr('fill', d => d.status === 'active' ? '#34d058' : '#f85149')
+        .attr('class', 'status-indicator');
+    
+    // デバイスアイコン
+    nodeGroups.append('text')
+        .attr('x', -cardWidth/2 + 45)   // 左端から45px
+        .attr('y', 5)
+        .attr('text-anchor', 'middle')
+        .attr('font-family', 'Font Awesome 6 Free')
+        .attr('font-weight', '900')
+        .attr('font-size', '24px')
+        .attr('fill', d => d.status === 'active' ? '#d73a49' : '#636366')
+        .text(d => {
+            // デバイスタイプに応じたアイコン
+            if (d.type === 'server') return '\uf233'; // server
+            if (d.type === 'database') return '\uf1c0'; // database
+            if (d.type === 'monitoring') return '\uf080'; // chart
+            if (d.type === 'storage') return '\uf0a0'; // hdd
+            if (d.type === 'application') return '\uf121'; // code
+            return '\uf108'; // desktop
+        });
+    
+    // デバイス情報グループ
+    const deviceInfo = nodeGroups.append('g')
+        .attr('class', 'device-info');
+    
+    // デバイス名
+    deviceInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)  // アイコンの右側
+        .attr('y', -20)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-label')
+        .attr('font-weight', '600')
+        .attr('font-size', '14px')
+        .attr('fill', '#f0f6fc')
+        .text(d => {
+            const name = d.name || d.device_name || d.sitename || `Device ${d.id}`;
+            // カード幅に合わせて文字数制限（約20文字）
+            return name.length > 20 ? name.substring(0, 18) + '...' : name;
+        });
+    
+    // IPアドレス
+    deviceInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 0)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#8b949e')
+        .text(d => {
+            const ip = d.ip || d.ip_address || d.deviceip || '';
+            // IP表示も制限（通常は問題ないが念のため）
+            return ip.length > 20 ? `IP: ${ip.substring(0, 15)}...` : `IP: ${ip}`;
+        });
+    
+    // パスとポート（一行にまとめる）
+    deviceInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 15)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-sublabel')
+        .attr('font-size', '11px')
+        .attr('fill', '#8b949e')
+        .text(d => {
+            const path = d.path || '/';
+            const ports = d.ports || d.port || [];
+            const portStr = Array.isArray(ports) ? ports.join(',') : ports.toString();
+            // カード幅に合わせて制限
+            const text = `${path} :${portStr}`;
+            return text.length > 22 ? text.substring(0, 20) + '...' : text;
+        });
+    
+    // 稼働状態
+    deviceInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 30)
+        .attr('text-anchor', 'start')
+        .attr('class', 'node-status')
+        .attr('font-size', '11px')
+        .attr('fill', d => d.status === 'active' ? '#34d058' : '#f85149')
+        .text(d => d.status === 'active' ? '稼働中' : '停止中');
+    
+    // アクセス数バッジ
+    nodeGroups.each(function(d) {
+        if (d.access_count && d.access_count > 0) {
+            const badge = d3.select(this).append('g')
+                .attr('transform', `translate(${cardWidth/2 - 20}, ${-cardHeight/2 + 20})`);  // 右上隅
+            
+            badge.append('circle')
+                .attr('r', 12)
+                .attr('fill', '#ff453a');
+            
+            badge.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', 4)
+                .attr('fill', 'white')
+                .attr('class', 'access-badge')
+                .text(d.access_count);
+        }
+    });
+    
+    // Hover効果
+    nodeGroups.on('mouseover', function(event, d) {
+        d3.select(this).select('.node-circle')
+            .transition()
+            .duration(200)
+            .attr('r', 40);
+    }).on('mouseout', function(event, d) {
+        d3.select(this).select('.node-circle')
+            .transition()
+            .duration(200)
+            .attr('r', 35);
+    });
+    
+    // デバイスリストの表示
+    const deviceList = document.getElementById('device-list');
+    filteredDevices.forEach(device => {
+        const row = document.createElement('div');
+        row.className = 'device-row';
+        row.setAttribute('data-device-id', device.id);
+        row.innerHTML = `
+            <div class="device-info">
+                <div class="device-icon">
+                    <i class="fas ${device.type === 'server' ? 'fa-server' : 'fa-desktop'}"></i>
+                </div>
+                <div>
+                    <div style="font-weight: var(--font-weight-medium);">${device.name || device.sitename}</div>
+                    <div style="font-size: var(--font-size-small); color: var(--text-secondary);">${device.description || 'No description'}</div>
+                </div>
+            </div>
+            <div>${device.ip || device.deviceip}</div>
+            <div>${Array.isArray(device.port) ? device.port.join(', ') : device.port}</div>
+            <div>${device.domain || '-'}</div>
+            <div>
+                <span class="status-indicator ${device.status === 'active' ? 'status-active' : 'status-inactive'}"></span>
+                <span class="badge ${device.status === 'active' ? 'badge-success' : 'badge-danger'}">
+                    ${device.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </div>
+        `;
+        deviceList.appendChild(row);
+    });
+    
+    // 実際のping機能実装
+    async function updateConnectionStatus() {
+        for (const device of filteredDevices) {
+            try {
+                const response = await fetch(`/api/device/${device.id}/ping`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const isAlive = result.is_alive;
+                    
+                    // 接続線の更新
+                    deviceLinks.filter(d => d.id === device.id)
+                        .transition()
+                        .duration(1000)
+                        .attr('stroke', isAlive ? '#d73a49' : '#636366')  // 低彩度赤
+                        .attr('class', isAlive ? 'link link-active' : 'link link-inactive');
+                    
+                    // デバイスノードの更新
+                    nodeGroups.filter(d => d.id === device.id)
+                        .select('.node-circle')
+                        .transition()
+                        .duration(1000)
+                        .attr('fill', isAlive ? '#d73a49' : '#636366')  // 低彩度赤
+                        .attr('stroke', isAlive ? '#b02a37' : '#535356');
+                    
+                    // デバイスリストの状態も更新
+                    const deviceRow = document.querySelector(`[data-device-id="${device.id}"]`);
+                    if (deviceRow) {
+                        const statusIndicator = deviceRow.querySelector('.status-indicator');
+                        const statusBadge = deviceRow.querySelector('.badge');
+                        if (statusIndicator) {
+                            statusIndicator.className = `status-indicator ${isAlive ? 'status-active' : 'status-inactive'}`;
+                        }
+                        if (statusBadge) {
+                            statusBadge.className = `badge ${isAlive ? 'badge-success' : 'badge-danger'}`;
+                            statusBadge.textContent = isAlive ? 'Active' : 'Inactive';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`Ping failed for device ${device.id}:`, error);
+            }
+        }
+    }
+    
+    // 初回実行（一旦コメントアウト - デバッグのため）
+    // updateConnectionStatus();
+    
+    // 30秒ごとに接続状態を更新
+    // setInterval(updateConnectionStatus, 30000);
+    
+    } catch (error) {
+        console.error('Error in topology rendering:', error);
+        console.error('Error stack:', error.stack);
+    }
+});
+</script>
+{% endblock %}

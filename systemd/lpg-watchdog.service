@@ -1,0 +1,23 @@
+[Unit]
+Description=LPG Network Watchdog - Network Protection Service
+After=network.target
+Before=lpg-admin.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/lpg/src/network_watchdog.py
+Restart=always
+RestartSec=5
+
+# Run with high priority
+Nice=-10
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=80
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

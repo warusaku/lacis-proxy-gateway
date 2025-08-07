@@ -1,0 +1,29 @@
+[Unit]
+Description=LPG Proxy Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/lpg/src
+
+# Environment
+Environment="LPG_PROXY_PORT=8080"
+
+# Main service
+ExecStart=/usr/bin/python3 /opt/lpg/src/lpg-proxy.py
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+# Security
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/lpg /var/log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+[Unit]
+Description=LPG HTTP Proxy Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root
+ExecStart=/usr/bin/python3 /root/lpg-proxy-8080.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+
+# Environment
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PYTHONUNBUFFERED=1
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lpg-proxy
+
+[Install]
+WantedBy=multi-user.target
