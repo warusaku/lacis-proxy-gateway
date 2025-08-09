@@ -1,0 +1,42 @@
+[Unit]
+Description=Enhanced LPG Network Watchdog with Auto-Recovery
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/lpg/src/enhanced_network_watchdog.py
+Restart=always
+RestartSec=10
+
+# Watchdog configuration
+# If the service doesn't notify systemd within 30 seconds, it will be restarted
+WatchdogSec=30
+TimeoutStopSec=10
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+# Restart limits - if fails 3 times in 5 minutes, trigger reboot
+StartLimitIntervalSec=300
+StartLimitBurst=3
+StartLimitAction=reboot
+
+# CPU and Memory limits to prevent resource exhaustion
+CPUQuota=50%
+MemoryLimit=256M
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lpg-watchdog
+
+# Security hardening
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log /var/run /opt/lpg
+
+[Install]
+WantedBy=multi-user.target

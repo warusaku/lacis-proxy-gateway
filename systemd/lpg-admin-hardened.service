@@ -1,0 +1,55 @@
+[Unit]
+Description=Hardened LPG Admin UI Service
+After=network-online.target lpg-watchdog-enhanced.service
+Wants=network-online.target
+Requires=lpg-watchdog-enhanced.service
+
+[Service]
+Type=simple
+User=root
+ExecStartPre=/usr/bin/python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',8443)); s.close(); print('Port check OK')"
+ExecStart=/usr/bin/python3 /opt/lpg/src/lpg_hardened_admin.py
+Restart=on-failure
+RestartSec=10
+
+# Critical: Force environment variables
+Environment="LPG_ADMIN_HOST=127.0.0.1"
+Environment="LPG_ADMIN_PORT=8443"
+Environment="FLASK_RUN_HOST=127.0.0.1"
+Environment="PYTHONUNBUFFERED=1"
+
+# Unset any dangerous variables
+UnsetEnvironment=FLASK_RUN_HOST WERKZEUG_RUN_MAIN
+
+# Watchdog
+WatchdogSec=60
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+# Restart limits
+StartLimitIntervalSec=300
+StartLimitBurst=5
+StartLimitAction=none
+
+# Resource limits
+CPUQuota=100%
+MemoryLimit=512M
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lpg-admin
+
+# Security
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/lpg /var/log
+
+# Network isolation - only allow localhost
+RestrictAddressFamilies=AF_INET AF_INET6
+IPAddressAllow=127.0.0.1/32 ::1/128 192.168.234.0/24
+IPAddressDeny=0.0.0.0/0
+
+[Install]
+WantedBy=multi-user.target
