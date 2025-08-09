@@ -21,6 +21,9 @@ import json
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+
+# セッションストア
+session_store = {}
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -32,7 +35,8 @@ import subprocess
 # サーバー起動時刻を記録
 START_TIME = datetime.now()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='/opt/lpg/templates')
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # Helper functions for UI display
 def calculate_uptime():
@@ -65,7 +69,8 @@ def get_devices():
             'status': dev.get('status', 'active'),
             'path': dev.get('device_path', dev.get('path', '/')),
             'description': dev.get('device_description', dev.get('description', '')),
-            'domain': dev.get('domain_name', dev.get('domain', ''))
+            'domain': dev.get('domain_name', dev.get('domain', '')),
+            'access_count': dev.get('access_count', 0)
         })
     
     # configから追加のデバイス情報
@@ -94,24 +99,43 @@ def get_domains():
     config = load_config()
     domains = []
     
-    # hostdomainsから
+    # hostdomainsから基本情報を取得
     for domain_name, subnet in config.get('hostdomains', {}).items():
+        # hostingdeviceから詳細情報を取得
+        hosting_info = config.get('hostingdevice', {}).get(domain_name, {})
+        
+        # /lacisstack/boards の情報を優先的に使用
+        boards_info = hosting_info.get('/lacisstack/boards', {})
+        if boards_info:
+            path = '/lacisstack/boards'
+            deviceip = boards_info.get('deviceip', '192.168.234.10')
+            port = boards_info.get('port', [8080])[0] if boards_info.get('port') else 8080
+            upstream = f"{deviceip}:{port}"
+        else:
+            # デフォルト値
+            path = '/'
+            upstream = '192.168.234.10:8080'
+        
         domains.append({
             'id': len(domains),
             'name': domain_name,
             'subnet': subnet,
+            'path': path,
+            'upstream': upstream,
             'status': 'active'
         })
     
-    # domainsから
+    # domainsから（もしあれば）
     for domain_name, domain_config in config.get('domains', {}).items():
-        domains.append({
-            'id': len(domains),
-            'name': domain_name,
-            'upstream': domain_config.get('upstream', ''),
-            'path': domain_config.get('path', '/'),
-            'status': 'active'
-        })
+        if not any(d['name'] == domain_name for d in domains):
+            domains.append({
+                'id': len(domains),
+                'name': domain_name,
+                'upstream': domain_config.get('upstream', '192.168.234.10:8080'),
+                'path': domain_config.get('path', '/'),
+                'subnet': domain_config.get('subnet', '192.168.234.0/24'),
+                'status': 'active'
+            })
     
     # 実際のデータが少ない場合、定義済みドメインを追加
     if len(domains) == 0:
@@ -548,19 +572,9 @@ def network():
     # Helper関数でネットワーク統計データを取得
     network_metrics = get_network_metrics()
     
-    # ネットワーク統計データを構築
-    stats = {
-        'total_connections': metrics_data.get('requests_total', 0),
-        'bandwidth': network_metrics['bandwidth_usage']['current'],
-        'latency': network_metrics['latency']['avg'],
-        'packet_loss': f"{metrics_data.get('errors', 0)}%",
-        'packets_received': network_metrics['packet_stats']['received'],
-        'packets_sent': network_metrics['packet_stats']['sent'],
-        'packets_dropped': network_metrics['packet_stats']['dropped']
-    }
-    
-    # 実際のネットワーク接続を取得
+    # 実際のネットワーク接続を取得（statsの前に移動してカウントに使用）
     connections = []
+    active_connection_count = 0  # 実際の接続数をカウント
     try:
         import subprocess
         # netstatで接続を取得(-an で数値表示)
@@ -611,6 +625,20 @@ def network():
                 'bytes': 'N/A'
             }
         ]
+    
+    # 実際の接続数をカウント（修正: connectionsを取得した後にカウント）
+    active_connection_count = len(connections)
+    
+    # ネットワーク統計データを構築（修正: 実際の接続数を使用）
+    stats = {
+        'total_connections': active_connection_count,  # 実際の接続数を使用
+        'bandwidth': network_metrics['bandwidth_usage']['current'],
+        'latency': network_metrics['latency']['avg'],
+        'packet_loss': f"{metrics_data.get('errors', 0)}%",
+        'packets_received': network_metrics['packet_stats']['received'],
+        'packets_sent': network_metrics['packet_stats']['sent'],
+        'packets_dropped': network_metrics['packet_stats']['dropped']
+    }
     
     return render_template('network_unified.html', 
                          stats=stats, 
@@ -719,7 +747,8 @@ def api_add_device():
         device_id = str(uuid.uuid4())[:8]
         
         # Add to devices.json
-        devices = load_devices_data()
+        devices_data = load_devices_data()
+        devices = devices_data.get('devices', []) if isinstance(devices_data, dict) else devices_data
         new_device = {
             'id': device_id,
             'name': sitename,
@@ -772,7 +801,8 @@ def api_update_device(device_id):
         data = request.json
         
         # Load current devices data
-        devices = load_devices_data()
+        devices_data = load_devices_data()
+        devices = devices_data.get('devices', []) if isinstance(devices_data, dict) else devices_data
         
         # Find the device to update
         device_found = False
@@ -842,7 +872,8 @@ def api_delete_device_by_id(device_id):
     """Delete device by ID"""
     try:
         # Load current devices data
-        devices = load_devices_data()
+        devices_data = load_devices_data()
+        devices = devices_data.get('devices', []) if isinstance(devices_data, dict) else devices_data
         
         # Find and remove the device
         device_to_delete = None
@@ -1027,6 +1058,17 @@ def topology():
         # ip_address フィールドも追加(テンプレート互換性のため)
         device['ip_address'] = device.get('ip')
         
+        # アクセス数を取得または生成（デモ用にランダム値を使用）
+        import random
+        # if 'access_count' not in device:
+        # デバイスタイプに基づいてアクセス数を設定
+        if device.get('type') == 'server':
+            device['access_count'] = device.get("access_count", 0)  # TODO: Implement proper access counting  # 実際のセッション数
+        elif device.get('type') == 'application':
+            device['access_count'] = device.get("access_count", 0)  # TODO: Implement proper access counting
+        else:
+            device['access_count'] = 0
+        
         access_count = device.get('access_count', 0)
         total_access_count += access_count
         
@@ -1177,7 +1219,8 @@ def api_get_devices():
     """デバイス一覧を取得"""
     try:
         # devices.jsonからデバイスデータを読み込む
-        devices = load_devices_data()
+        devices_data = load_devices_data()
+        devices = devices_data.get('devices', []) if isinstance(devices_data, dict) else devices_data
         
         # 各デバイスにipフィールドを追加(テンプレートの互換性のため)
         for device in devices:

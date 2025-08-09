@@ -2,61 +2,22 @@
   "devices": [
     {
       "id": "orangepi5plus",
-      "device_name": "OrangePi 5 Plus",
       "name": "OrangePi 5 Plus",
-      "ip_address": "192.168.234.10",
       "ip": "192.168.234.10",
-      "device_ip": "192.168.234.10",
-      "ports": [80, 3000, 5432, 6379, 8080, 8081],
-      "port": [80, 3000, 5432, 6379, 8080, 8081],
-      "device_port": [80, 3000, 5432, 6379, 8080, 8081],
+      "port": [
+        80,
+        3000,
+        5432,
+        6379,
+        8080,
+        8081
+      ],
       "type": "server",
-      "device_type": "server",
       "status": "active",
-      "path": "/",
-      "device_path": "/",
       "description": "Main server hosting all services",
-      "device_description": "Main server hosting all services",
-      "access_count": 1958,
+      "access_count": 0,
       "domain": "akb001yebraxfqsm9y.dyndns-web.com",
-      "domain_name": "akb001yebraxfqsm9y.dyndns-web.com",
-      "services": [
-        {
-          "name": "Frontend Server",
-          "port": 3000,
-          "path": "/lacisstack/boards/",
-          "type": "webserver",
-          "description": "Vite dev server"
-        },
-        {
-          "name": "Backend API",
-          "port": 8080,
-          "path": "/lacisstack/boards/api",
-          "type": "api",
-          "description": "Express API server"
-        },
-        {
-          "name": "WebSocket Server",
-          "port": 8081,
-          "path": "/lacisstack/boards/ws",
-          "type": "websocket",
-          "description": "Socket.io server"
-        },
-        {
-          "name": "PostgreSQL",
-          "port": 5432,
-          "path": "/",
-          "type": "database",
-          "description": "Primary database"
-        },
-        {
-          "name": "Redis",
-          "port": 6379,
-          "path": "/",
-          "type": "cache",
-          "description": "In-memory cache"
-        }
-      ]
+      "path": "/lacisstack/boards/"
     }
   ]
 }

@@ -141,7 +141,22 @@
         </div>
     </div>
     
+    <!-- Filter input field added for Task 3 -->
     <div class="log-filters">
+        <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
+            <input type="text" 
+                   id="filterInput" 
+                   class="form-control" 
+                   placeholder="Filter logs by text..." 
+                   style="flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: var(--radius);"
+                   onkeyup="filterLogs()">
+            <button class="btn btn-sm btn-secondary" onclick="clearFilter()" style="padding: 8px 16px;">
+                <i class="fas fa-times"></i> Clear
+            </button>
+        </div>
+    </div>
+    
+    <div class="log-filters" style="margin-top: 10px;">
         <div class="filter-chip active" data-filter="all">
             <i class="fas fa-list"></i> All
         </div>
@@ -208,6 +223,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function refreshLogs() {
     location.reload();
+}
+
+// Filter logs function for Task 3
+function filterLogs() {
+    const filterInput = document.getElementById('filterInput');
+    const filterText = filterInput.value.toLowerCase();
+    const logEntries = document.querySelectorAll('.log-entry');
+    
+    logEntries.forEach(entry => {
+        const timestamp = entry.querySelector('.log-timestamp').textContent.toLowerCase();
+        const type = entry.querySelector('.log-type').textContent.toLowerCase();
+        const message = entry.querySelector('.log-message').textContent.toLowerCase();
+        const fullText = timestamp + ' ' + type + ' ' + message;
+        
+        if (fullText.includes(filterText)) {
+            entry.style.display = 'flex';
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+}
+
+// Clear filter function for Task 3
+function clearFilter() {
+    const filterInput = document.getElementById('filterInput');
+    filterInput.value = '';
+    filterLogs(); // Trigger filter to show all logs
 }
 
 // Convert timestamp to JST in template filter

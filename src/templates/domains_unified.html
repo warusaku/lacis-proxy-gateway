@@ -88,6 +88,76 @@
     .modal-content .form-control:focus {
         color: #FFFFFF !important;
     }
+    
+    /* View toggle button styles */
+    .view-toggle {
+        display: flex;
+        gap: var(--spacing-xs);
+        background-color: var(--bg-tertiary);
+        padding: 4px;
+        border-radius: var(--radius-full);
+    }
+    
+    .view-toggle-btn {
+        padding: var(--spacing-xs) var(--spacing-md);
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .view-toggle-btn.active {
+        background-color: var(--accent-primary);
+        color: white;
+    }
+    
+    /* Table view styles */
+    .domains-table-container {
+        display: none;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-lg);
+        margin-top: var(--spacing-lg);
+    }
+    
+    .domains-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .domains-table th {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+        font-weight: var(--font-weight-medium);
+        text-align: left;
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-bottom: 2px solid var(--border-subtle);
+        font-size: var(--font-size-small);
+        text-transform: uppercase;
+    }
+    
+    .domains-table td {
+        padding: var(--spacing-md);
+        border-bottom: 1px solid var(--border-subtle);
+        color: var(--text-primary);
+    }
+    
+    .domains-table tr:hover {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    
+    .domains-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .table-actions {
+        display: flex;
+        gap: var(--spacing-xs);
+    }
 </style>
 {% endblock %}
 
@@ -100,10 +170,18 @@
     <p class="page-subtitle">Manage your registered domains and their configurations</p>
 </div>
 
-<div class="action-bar">
+<div class="action-bar" style="display: flex; justify-content: space-between; align-items: center;">
     <button class="add-domain-btn" onclick="showAddDomainModal()">
         <i class="fas fa-plus"></i> Add Domain
     </button>
+    <div class="view-toggle">
+        <button class="view-toggle-btn active" onclick="toggleView('card')" id="cardViewBtn">
+            <i class="fas fa-th-large"></i> Card View
+        </button>
+        <button class="view-toggle-btn" onclick="toggleView('table')" id="tableViewBtn">
+            <i class="fas fa-table"></i> Table View
+        </button>
+    </div>
 </div>
 
 <div class="domains-container">
@@ -148,72 +226,249 @@
     {% endif %}
 </div>
 
+<!-- Table View Container -->
+<div class="domains-table-container" id="tableView">
+    {% if domains %}
+        <table class="domains-table">
+            <thead>
+                <tr>
+                    <th>Domain Name</th>
+                    <th>Path</th>
+                    <th>Upstream</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for domain in domains %}
+                <tr>
+                    <td>{{ domain.name }}</td>
+                    <td>
+                        {% if domain.path %}
+                            {{ domain.path }}
+                        {% else %}
+                            /lacisstack/boards
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if domain.upstream %}
+                            {{ domain.upstream }}
+                        {% else %}
+                            192.168.234.10:8080
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="color: var(--accent-green);">
+                            <i class="fas fa-circle" style="font-size: 8px;"></i> {{ domain.status|capitalize }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn btn-sm btn-icon" onclick="editDomain('{{ domain.name }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-icon text-danger" onclick="deleteDomain('{{ domain.name }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-globe"></i>
+            </div>
+            <h3>No Domains Registered</h3>
+            <p>Click "Add Domain" to register your first domain</p>
+        </div>
+    {% endif %}
+</div>
+
+
+<style>
+#domainAddModal.modal {
+    display: none !important;
+    position: fixed !important;
+    z-index: 10000 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: rgba(0,0,0,0.5) !important;
+}
+
+#domainAddModal .modal-content {
+    background-color: #1e1e2e !important;
+    margin: 5% auto !important;
+    padding: 0 !important;
+    border: 1px solid #4a4a6e !important;
+    width: 500px !important;
+    border-radius: 8px !important;
+}
+
+#domainAddModal .modal-header {
+    padding: 20px !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 8px 8px 0 0 !important;
+}
+
+#domainAddModal .modal-body {
+    padding: 20px !important;
+}
+
+#domainAddModal .modal-footer {
+    padding: 20px !important;
+    border-top: 1px solid #4a4a6e !important;
+}
+</style>
+
 <!-- Add Domain Modal -->
-<div class="modal fade" id="addDomainModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New Domain</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addDomainForm">
-                    <div class="mb-3">
-                        <label for="domainName" class="form-label">Domain Name</label>
-                        <input type="text" class="form-control" id="domainName" placeholder="example.com" required>
-                        <div class="form-text">Enter the domain name without protocol</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="domainSubnet" class="form-label">Allowed Subnet</label>
-                        <input type="text" class="form-control" id="domainSubnet" placeholder="192.168.1.0/24" required>
-                        <div class="form-text">CIDR notation for allowed IP range</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="addDomain()">Add Domain</button>
-            </div>
+<div class="modal" id="domainAddModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Domain</h2>
+            <button class="close-btn" onclick="closeAddDomainModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="addDomainForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="add_domain_name">Domain Name *</label>
+                    <input type="text" id="add_domain_name" name="domain_name" required 
+                           placeholder="e.g., example.com">
+                </div>
+                <div class="form-group">
+                    <label for="add_allowed_subnet">Allowed Subnet</label>
+                    <input type="text" id="add_allowed_subnet" name="allowed_subnet" 
+                           placeholder="e.g., 192.168.1.0/24">
+                </div>
+                <div class="form-group">
+                    <label for="add_path">Path</label>
+                    <input type="text" id="add_path" name="path" 
+                           placeholder="e.g., /api" value="/">
+                </div>
+                <div class="form-group">
+                    <label for="add_upstream">Upstream Server</label>
+                    <input type="text" id="add_upstream" name="upstream" 
+                           placeholder="e.g., 192.168.234.10:8080">
+                </div>
+                <div class="form-group">
+                    <label for="add_description">Description</label>
+                    <textarea id="add_description" name="description" rows="3" 
+                              placeholder="Optional description"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeAddDomainModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveDomain()">Save Domain</button>
         </div>
     </div>
 </div>
 
 <script>
-function showAddDomainModal() {
-    const modal = new bootstrap.Modal(document.getElementById('addDomainModal'));
-    modal.show();
+// Toggle between card and table view
+function toggleView(view) {
+    const cardView = document.querySelector('.domains-container');
+    const tableView = document.getElementById('tableView');
+    const cardBtn = document.getElementById('cardViewBtn');
+    const tableBtn = document.getElementById('tableViewBtn');
+    
+    if (view === 'card') {
+        cardView.style.display = 'block';
+        tableView.style.display = 'none';
+        cardBtn.classList.add('active');
+        tableBtn.classList.remove('active');
+    } else {
+        cardView.style.display = 'none';
+        tableView.style.display = 'block';
+        cardBtn.classList.remove('active');
+        tableBtn.classList.add('active');
+    }
 }
 
-function addDomain() {
-    const domainName = document.getElementById('domainName').value;
-    const subnet = document.getElementById('domainSubnet').value;
-    
-    if (!domainName || !subnet) {
-        alert('Please fill in all fields');
+// Modal functions
+function showAddDomainModal() {
+    const modal = document.getElementById('domainAddModal');
+    if (!modal) {
+        console.error('Add Domain Modal not found');
         return;
     }
     
-    fetch('/api/domains', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            domain: domainName,
-            subnet: subnet
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
+    // Clear form
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+    
+    // Show modal
+    modal.style.display = 'block';
+    
+    // Focus first input
+    const firstInput = modal.querySelector('input[type="text"]');
+    if (firstInput) firstInput.focus();
+}
+
+function closeAddDomainModal() {
+    const modal = document.getElementById('domainAddModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.getElementById('addDomainForm').reset();
+    }
+}
+
+async function saveDomain() {
+    const form = document.getElementById('addDomainForm');
+    if (!form) {
+        console.error('Add Domain Form not found');
+        return;
+    }
+    
+    // Collect form data
+    const formData = {
+        domain_name: form.querySelector('[name="domain_name"]').value.trim(),
+        allowed_subnet: form.querySelector('[name="allowed_subnet"]').value.trim(),
+        path: form.querySelector('[name="path"]').value.trim() || '/',
+        upstream: form.querySelector('[name="upstream"]').value.trim(),
+        description: form.querySelector('[name="description"]').value.trim()
+    };
+    
+    // Validation
+    if (!formData.domain_name) {
+        alert('Domain name is required');
+        return;
+    }
+    
+    console.log('Saving domain:', formData);
+    
+    try {
+        const response = await fetch('/api/domains', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Domain saved:', result);
+            closeAddDomainModal();
             location.reload();
         } else {
-            alert('Error: ' + data.message);
+            const error = await response.text();
+            console.error('Server error:', error);
+            alert('Failed to add domain: ' + error);
         }
-    })
-    .catch(error => {
-        alert('Error adding domain: ' + error);
-    });
+    } catch (error) {
+        console.error('Error adding domain:', error);
+        alert('Error adding domain: ' + error.message);
+    }
+}
+
+// Backwards compatibility
+function addDomain() {
+    saveDomain();
 }
 
 function editDomain(domainName) {

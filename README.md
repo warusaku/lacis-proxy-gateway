@@ -1,133 +1,149 @@
-# LPG - Lacis Proxy Gateway
+# LPG (Lacis Proxy Gateway) v2.0.0
 
-A secure Python-based reverse proxy gateway with web-based admin interface and comprehensive safety mechanisms.
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Security](https://img.shields.io/badge/security-critical-red)
 
-## 🛡️ Safety First
+セキュアなPythonベースのリバースプロキシゲートウェイ。Web管理インターフェースと包括的な安全機構を搭載。
 
-**⚠️ CRITICAL**: This version includes multiple layers of network protection to prevent system-wide failures after lessons learned from production incidents.
+## 🛡️ セキュリティファースト
 
-### Safety Features:
-- **Network Watchdog**: Detects and immediately kills processes binding to dangerous addresses (0.0.0.0)
-- **SSH Fallback Protection**: Maintains SSH access even during network failures
-- **Safe Wrapper**: Runtime monitoring and environment variable protection
-- **Systemd Integration**: Proper service dependencies and safety checks
+**⚠️ 重要**: 本バージョンには、実運用環境での重大インシデントから学んだ教訓に基づき、システム全体の障害を防ぐための多層防御機構が実装されています。
 
-## Overview
+### 安全機能:
+- **ネットワーク監視**: 危険なアドレス(0.0.0.0)へのバインドを検出し即座にプロセスを終了
+- **SSHフォールバック保護**: ネットワーク障害時でもSSHアクセスを維持
+- **セーフラッパー**: ランタイム監視と環境変数保護
+- **Systemd統合**: 適切なサービス依存関係と安全性チェック
 
-LPG provides HTTP/HTTPS reverse proxy functionality with a web-based management interface for the LacisDrawBoards system. It routes requests to backend services based on domain and path configurations.
+## 概要
 
-## Features
+LPGは、LacisDrawBoardsシステム用のWeb管理インターフェースを備えたHTTP/HTTPSリバースプロキシ機能を提供します。ドメインとパスの設定に基づいてバックエンドサービスへリクエストをルーティングします。
 
-- **Reverse Proxy**: Domain and path-based routing
-- **Web Management UI**: Dark-themed unified interface
-- **Topology View**: D3.js visual representation of proxy relationships
-- **Device Management**: CRUD operations for backend services
-- **User Management**: Admin user creation and management
-- **Logging**: Access and operation logs with timezone support
-- **HTTPS Support**: Let's Encrypt integration via Nginx
-- **Network Protection**: Multi-layer safety mechanisms
+## 主な機能
 
-## ⚠️ Critical Installation Notes
+- **リバースプロキシ**: ドメインとパスベースのルーティング
+- **Web管理UI**: ダークテーマの統一インターフェース
+- **トポロジービュー**: D3.jsによるプロキシ関係の視覚的表現
+- **デバイス管理**: バックエンドサービスのCRUD操作
+- **ユーザー管理**: 管理者ユーザーの作成と管理
+- **ロギング**: タイムゾーン対応のアクセスログと操作ログ
+- **HTTPSサポート**: Nginx経由でのLet's Encrypt統合
+- **ネットワーク保護**: 多層安全機構
 
-**NEVER run the admin interface without environment protection!**
+## ⚠️ 重要なインストール注意事項
 
-### Safe Installation
+**環境保護なしで管理インターフェースを実行しないでください！**
+
+### 安全なインストール
 
 ```bash
-# 1. Clone this repository
-git clone https://github.com/lacis-ai/LacisProxyGateway.git
-cd LPG
+# 1. リポジトリのクローン
+git clone https://github.com/warusaku/lacis-proxy-gateway.git
+cd lacis-proxy-gateway
 
-# 2. Run the safe installation script
+# 2. 安全インストールスクリプトの実行
 sudo ./install.sh
 
-# 3. Test safety mechanisms (TEST ENVIRONMENT ONLY!)
+# 3. 安全機構のテスト（テスト環境のみ！）
 sudo ./test_safety_mechanisms.sh
 ```
 
-### Manual Installation (Use with caution)
+### 手動インストール（注意して使用）
 
 ```bash
-# Install dependencies
-pip3 install flask werkzeug requests
+# 依存関係のインストール
+pip3 install flask werkzeug requests psutil
 
-# CRITICAL: Set environment variables
-export LPG_ADMIN_HOST=127.0.0.1  # NEVER use 0.0.0.0!
+# 重要: 環境変数の設定
+export LPG_ADMIN_HOST=127.0.0.1  # 絶対に0.0.0.0を使用しない！
 export LPG_ADMIN_PORT=8443
+export LPG_PROXY_HOST=127.0.0.1  # プロキシも同様
+export LPG_PROXY_PORT=8080
 
-# Use systemd service (recommended)
+# systemdサービス使用（推奨）
 sudo systemctl start lpg-admin
+sudo systemctl start lpg-proxy
 
-# OR use safe wrapper
+# またはセーフラッパー使用
 python3 src/lpg_safe_wrapper.py
 ```
 
-## Access
+## アクセス
 
-- Admin UI: https://[your-domain]/lpg-admin/ (via nginx)
-- Direct access: http://127.0.0.1:8443 (local only)
-- Default credentials: admin / lpgadmin123
+- 管理UI: https://[your-domain]/lpg-admin/ (Nginx経由)
+- 直接アクセス: http://127.0.0.1:8443 (ローカルのみ)
+- デフォルト認証: admin / lpgadmin123
 
-## Directory Structure
+## ディレクトリ構造
 
 ```
 LPG/
-├── src/                    # Source code
-│   ├── lpg_admin.py       # Admin interface (Flask)
-│   ├── lpg-proxy.py       # Main proxy server
-│   ├── lpg_safe_wrapper.py # Safety wrapper
-│   ├── network_watchdog.py # Network monitor
-│   ├── ssh_fallback.sh    # SSH protection
-│   └── templates/         # HTML templates (unified theme)
-├── systemd/               # Service files with safety
-├── nginx/                 # Nginx configurations
-├── scripts/               # Deployment and testing
-├── docs/                  # Documentation
-├── install.sh             # Safe installation script
-└── test_safety_mechanisms.sh # Safety test suite
+├── src/                     # ソースコード
+│   ├── lpg_admin.py        # 管理インターフェース (Flask)
+│   ├── lpg-proxy.py        # メインプロキシサーバー
+│   ├── lpg_safe_wrapper.py # 安全ラッパー
+│   ├── network_watchdog.py # ネットワーク監視
+│   ├── ssh_fallback.sh     # SSH保護
+│   ├── config.json         # プロキシ設定
+│   ├── devices.json        # デバイス情報
+│   └── templates/          # HTMLテンプレート (統一ダークテーマ)
+├── systemd/                # 安全性を考慮したサービスファイル
+├── nginx/                  # Nginx設定
+├── scripts/                # デプロイメントとテスト
+├── docs/                   # ドキュメント
+├── diskimage/              # ディスクイメージ
+├── install.sh              # 安全インストールスクリプト
+└── test_safety_mechanisms.sh # 安全テストスイート
 ```
 
-## 🚨 Critical Safety Rules
+## 🚨 重要な安全規則
 
-### ❌ NEVER DO THIS:
+### ❌ 絶対にやってはいけないこと:
 ```python
-# Will crash entire network VLAN!
+# ネットワーク全体のVLANをクラッシュさせます！
 app.run(host='0.0.0.0', port=8443)
 ```
 
 ```bash
-# No environment protection!
+# 環境保護なし！
 nohup python3 lpg_admin.py &
 ```
 
-### ✅ ALWAYS DO THIS:
+### ✅ 常にこうすること:
 ```bash
-# Use environment variables
+# 環境変数を使用
 export LPG_ADMIN_HOST=127.0.0.1
 python3 src/lpg_safe_wrapper.py
 
-# Or use systemd service
+# またはsystemdサービスを使用
 sudo systemctl start lpg-admin
 ```
 
-## Documentation
+## ドキュメント
 
-- [Installation Guide](docs/INSTALLATION.md)
-- [API Reference](docs/API_REFERENCE.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Network Safety Protection](docs/network-safety-protection.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [インストールガイド](docs/installation-guide.md)
+- [設定ガイド](docs/configuration-guide.md)
+- [操作ガイド](docs/operation-guide.md)
+- [APIエンドポイント](docs/api-endpoints.md)
+- [セキュリティガイド](docs/security-guide.md)
+- [トラブルシューティング](docs/troubleshooting.md)
 
-## Emergency Recovery
+## 緊急時の復旧
 
-If network issues occur:
+ネットワーク問題が発生した場合:
 
-1. SSH access (protected by ssh_fallback.sh)
-2. Stop service: `sudo systemctl stop lpg-admin`
-3. Clear flags: `sudo rm -f /var/run/lpg_emergency_*`
-4. Check logs: `sudo tail -100 /var/log/lpg_admin.log`
-5. Restart safely: `sudo systemctl start lpg-admin`
+1. SSHアクセス (ssh_fallback.shで保護)
+2. サービス停止: `sudo systemctl stop lpg-admin lpg-proxy`
+3. フラグクリア: `sudo rm -f /var/run/lpg_emergency_*`
+4. ログ確認: `sudo tail -100 /var/log/lpg_admin.log`
+5. 安全に再起動: `sudo systemctl start lpg-proxy lpg-admin`
 
-## License
+## サポート
 
-This project is part of the LacisDrawBoards system.
+問題が発生した場合は、[Issues](https://github.com/warusaku/lacis-proxy-gateway/issues)で報告してください。
+
+## ライセンス
+
+MIT License - LacisDrawBoardsシステムの一部として提供

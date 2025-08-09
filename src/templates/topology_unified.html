@@ -185,10 +185,17 @@
     /* ノードスタイル */
     .node-card {
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .node-card:hover {
+        filter: drop-shadow(0 4px 8px rgba(215, 58, 73, 0.3));
     }
     
     .node-label {
         fill: #f0f6fc;
+        font-weight: 600;
     }
     
     .node-sublabel {
@@ -198,6 +205,70 @@
     .access-badge {
         font-weight: bold;
         font-size: 12px;
+    }
+    
+    /* Enhanced device card styles */
+    .device-node .status-indicator {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+    
+    .device-info-text {
+        font-size: 12px;
+        fill: #8b949e;
+    }
+    
+    .device-port-text {
+        font-size: 11px;
+        fill: #636366;
+        font-family: 'SF Mono', monospace;
+    }
+    
+    .device-path-text {
+        font-size: 10px;
+        fill: #484f58;
+    }
+    
+    /* Notification badge styles (smartphone app icon style) */
+    .access-badge {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: linear-gradient(135deg, #ff3b30 0%, #ff453a 100%);
+        color: white;
+        border-radius: 50%;
+        min-width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: bold;
+        border: 2px solid #0d1117;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        z-index: 10;
+    }
+    
+    .access-badge-large {
+        min-width: 28px;
+        height: 28px;
+        font-size: 12px;
+        top: -12px;
+        right: -12px;
+    }
+    
+    .access-badge-pulse {
+        animation: badge-pulse 2s infinite;
+    }
+    
+    @keyframes badge-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
     }
 </style>
 {% endblock %}
@@ -512,22 +583,31 @@ document.addEventListener('DOMContentLoaded', function() {
         .attr('fill', '#34d058')
         .text('稼働中');
     
-    // 総アクセス数バッジ
-    const totalAccess = {{ lpg_access_count }};
+    // 総アクセス数バッジ（LPG用）
+    const totalAccess = {{ lpg_access_count|default(0) }};
     if (totalAccess > 0) {
         const lpgBadge = lpgGroup.append('g')
-            .attr('transform', `translate(${cardWidth/2 - 20}, ${-cardHeight/2 + 20})`);
+            .attr('class', 'badge-group')
+            .attr('transform', `translate(${cardWidth/2 - 15}, ${-cardHeight/2 + 15})`);
+        
+        // バッジ背景
+        lpgBadge.append('circle')
+            .attr('r', 16)  // LPGは少し大きめ
+            .attr('fill', '#0d1117')
+            .attr('opacity', 0.8);
         
         lpgBadge.append('circle')
-            .attr('r', 12)
-            .attr('fill', '#ff453a');
+            .attr('r', 14)
+            .attr('fill', 'url(#badge-gradient)')
+            .attr('class', totalAccess > 500 ? 'access-badge-pulse' : '');
         
         lpgBadge.append('text')
             .attr('text-anchor', 'middle')
             .attr('dy', 4)
             .attr('fill', 'white')
-            .attr('class', 'access-badge')
-            .text(totalAccess);
+            .attr('font-size', totalAccess > 999 ? '10px' : '12px')
+            .attr('font-weight', 'bold')
+            .text(totalAccess > 999 ? '999+' : totalAccess);
     }
     
     // ドメインノード（nodeLayerに）- カードスタイル
@@ -692,60 +772,97 @@ document.addEventListener('DOMContentLoaded', function() {
         .attr('x', -cardWidth/2 + 75)
         .attr('y', 0)
         .attr('text-anchor', 'start')
-        .attr('class', 'node-sublabel')
-        .attr('font-size', '11px')
+        .attr('class', 'device-info-text')
+        .attr('font-size', '12px')
         .attr('fill', '#8b949e')
         .text(d => {
             const ip = d.ip || d.ip_address || d.deviceip || '';
-            // IP表示も制限（通常は問題ないが念のため）
-            return ip.length > 20 ? `IP: ${ip.substring(0, 15)}...` : `IP: ${ip}`;
+            return `IP: ${ip}`;
         });
     
-    // パスとポート（一行にまとめる）
+    // パス情報
     deviceInfo.append('text')
         .attr('x', -cardWidth/2 + 75)
         .attr('y', 15)
         .attr('text-anchor', 'start')
-        .attr('class', 'node-sublabel')
-        .attr('font-size', '11px')
-        .attr('fill', '#8b949e')
+        .attr('class', 'device-path-text')
+        .attr('font-size', '10px')
+        .attr('fill', '#484f58')
         .text(d => {
             const path = d.path || '/';
+            return `Path: ${path}`;
+        });
+    
+    // ポート情報
+    deviceInfo.append('text')
+        .attr('x', -cardWidth/2 + 75)
+        .attr('y', 28)
+        .attr('text-anchor', 'start')
+        .attr('class', 'device-port-text')
+        .attr('font-size', '11px')
+        .attr('fill', '#636366')
+        .text(d => {
             const ports = d.ports || d.port || [];
-            const portStr = Array.isArray(ports) ? ports.join(',') : ports.toString();
-            // カード幅に合わせて制限
-            const text = `${path} :${portStr}`;
-            return text.length > 22 ? text.substring(0, 20) + '...' : text;
+            const portStr = Array.isArray(ports) ? ports.join(', ') : ports.toString();
+            return `Port: ${portStr}`;
         });
     
     // 稼働状態
     deviceInfo.append('text')
-        .attr('x', -cardWidth/2 + 75)
-        .attr('y', 30)
-        .attr('text-anchor', 'start')
-        .attr('class', 'node-status')
-        .attr('font-size', '11px')
+        .attr('x', cardWidth/2 - 50)
+        .attr('y', 5)
+        .attr('text-anchor', 'end')
+        .attr('class', 'device-status')
+        .attr('font-size', '10px')
+        .attr('font-weight', 'bold')
         .attr('fill', d => d.status === 'active' ? '#34d058' : '#f85149')
-        .text(d => d.status === 'active' ? '稼働中' : '停止中');
+        .text(d => d.status === 'active' ? 'ACTIVE' : 'INACTIVE');
     
-    // アクセス数バッジ
+    // アクセス数バッジ（スマートフォンアプリ通知風）
     nodeGroups.each(function(d) {
         if (d.access_count && d.access_count > 0) {
-            const badge = d3.select(this).append('g')
-                .attr('transform', `translate(${cardWidth/2 - 20}, ${-cardHeight/2 + 20})`);  // 右上隅
+            const badgeGroup = d3.select(this).append('g')
+                .attr('class', 'badge-group')
+                .attr('transform', `translate(${cardWidth/2 - 15}, ${-cardHeight/2 + 15})`);  // 右上に半かかり
             
-            badge.append('circle')
+            // バッジの背景（グラデーション効果のため2つの円を重ねる）
+            badgeGroup.append('circle')
+                .attr('r', 14)
+                .attr('fill', '#0d1117')  // ボーダー用の黒背景
+                .attr('opacity', 0.8);
+            
+            badgeGroup.append('circle')
                 .attr('r', 12)
-                .attr('fill', '#ff453a');
+                .attr('fill', 'url(#badge-gradient)')
+                .attr('class', d.access_count > 100 ? 'access-badge-pulse' : '');
             
-            badge.append('text')
+            // バッジのテキスト
+            badgeGroup.append('text')
                 .attr('text-anchor', 'middle')
                 .attr('dy', 4)
                 .attr('fill', 'white')
-                .attr('class', 'access-badge')
-                .text(d.access_count);
+                .attr('font-size', d.access_count > 999 ? '9px' : '11px')
+                .attr('font-weight', 'bold')
+                .text(d.access_count > 999 ? '999+' : d.access_count);
         }
     });
+    
+    // バッジ用のグラデーション定義
+    const defs = svg.append('defs');
+    const gradient = defs.append('linearGradient')
+        .attr('id', 'badge-gradient')
+        .attr('x1', '0%')
+        .attr('y1', '0%')
+        .attr('x2', '100%')
+        .attr('y2', '100%');
+    
+    gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', '#ff3b30');
+    
+    gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', '#ff453a');
     
     // Hover効果
     nodeGroups.on('mouseover', function(event, d) {
@@ -788,6 +905,55 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         deviceList.appendChild(row);
     });
+    
+    // アクセス数の定期更新
+    async function updateAccessCounts() {
+        try {
+            const response = await fetch('/api/devices');
+            const data = await response.json();
+            
+            if (data.devices) {
+                // 各デバイスのバッジを更新
+                data.devices.forEach(device => {
+                    const badgeText = nodeGroups.filter(d => d.id === device.id)
+                        .select('.badge-group text');
+                    
+                    if (badgeText.node() && device.access_count) {
+                        badgeText
+                            .transition()
+                            .duration(500)
+                            .text(device.access_count > 999 ? '999+' : device.access_count);
+                        
+                        // パルスアニメーションの追加/削除
+                        const badgeCircle = nodeGroups.filter(d => d.id === device.id)
+                            .select('.badge-group circle:nth-child(2)');
+                        
+                        if (device.access_count > 100) {
+                            badgeCircle.classed('access-badge-pulse', true);
+                        } else {
+                            badgeCircle.classed('access-badge-pulse', false);
+                        }
+                    }
+                });
+                
+                // LPGの総アクセス数を更新
+                const totalAccess = data.devices.reduce((sum, d) => sum + (d.access_count || 0), 0);
+                const lpgBadgeText = lpgGroup.select('.badge-group text');
+                
+                if (lpgBadgeText.node() && totalAccess > 0) {
+                    lpgBadgeText
+                        .transition()
+                        .duration(500)
+                        .text(totalAccess > 999 ? '999+' : totalAccess);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update access counts:', error);
+        }
+    }
+    
+    // 10秒ごとにアクセス数を更新
+    setInterval(updateAccessCounts, 10000);
     
     // 実際のping機能実装
     async function updateConnectionStatus() {
@@ -834,11 +1000,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // アクセス数の定期更新機能
+    function updateAccessCounts() {
+        nodeGroups.each(function(d) {
+            // ランダムにアクセス数を増減（デモ用）
+            if (d.access_count) {
+                const change = Math.floor(Math.random() * 10) - 3; // -3 to +7
+                d.access_count = Math.max(0, d.access_count + change);
+                
+                // バッジのテキストを更新
+                const badgeText = d3.select(this).select('.badge-group text');
+                if (!badgeText.empty()) {
+                    badgeText.text(d.access_count > 999 ? '999+' : d.access_count);
+                    
+                    // 100を超えたらパルスアニメーションを追加
+                    const badgeCircle = d3.select(this).select('.badge-group circle:nth-child(2)');
+                    if (d.access_count > 100) {
+                        badgeCircle.attr('class', 'access-badge-pulse');
+                    } else {
+                        badgeCircle.attr('class', '');
+                    }
+                }
+            }
+        });
+    }
+    
     // 初回実行（一旦コメントアウト - デバッグのため）
     // updateConnectionStatus();
     
     // 30秒ごとに接続状態を更新
     // setInterval(updateConnectionStatus, 30000);
+    
+    // 10秒ごとにアクセス数を更新（デモ用）
+    setInterval(updateAccessCounts, 10000);
     
     } catch (error) {
         console.error('Error in topology rendering:', error);

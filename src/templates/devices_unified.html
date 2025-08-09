@@ -332,38 +332,38 @@
             </button>
         </div>
         <form id="deviceForm">
-            <input type="hidden" id="deviceId" value="">
+            <input type="hidden" id="deviceId" name="device_id" value="">
             <div class="form-group">
                 <label class="form-label">Device Name</label>
-                <input type="text" class="form-control" id="deviceName" required>
+                <input type="text" class="form-control" id="deviceName" name="name" required>
             </div>
             <div class="form-group">
                 <label class="form-label">IP Address</label>
-                <input type="text" class="form-control" id="deviceIp" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" required>
+                <input type="text" class="form-control" id="deviceIp" name="ip_address" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" required>
             </div>
             <div class="form-group">
                 <label class="form-label">Port (comma-separated for multiple)</label>
-                <input type="text" class="form-control" id="devicePort" value="80" required>
-                        <small id="portHelperText" class="form-hint">Enter port numbers separated by commas (e.g., 80, 443, 8080)</small>
+                <input type="text" class="form-control" id="devicePort" name="port" value="80" required>
+                <small id="portHelperText" class="form-hint">Enter port numbers separated by commas (e.g., 80, 443, 8080)</small>
             </div>
             <div class="form-group">
                 <label class="form-label">Path</label>
-                <input type="text" class="form-control" id="devicePath" placeholder="/example-path" required>
-                <small class="form-hint">The URL path where this device will be accessible (e.g., /lacisstack/boards)</small>
+                <input type="text" class="form-control" id="devicePath" name="path" placeholder="/service/" required>
+                <small class="form-hint">パスは / で開始・終了する必要があります (例: /lacisstack/boards/)</small>
             </div>
             <div class="form-group">
                 <label class="form-label">Domain Name</label>
-                <select class="form-control" id="domainName" required>
+                <select class="form-control" id="domainName" name="domain_name" required>
                     <option value="">-- Select Domain --</option>
                 </select>
             </div>
             <div class="form-group">
                 <label class="form-label">Description</label>
-                <textarea class="form-control" id="deviceDescription" rows="3"></textarea>
+                <textarea class="form-control" id="deviceDescription" name="description" rows="3"></textarea>
             </div>
             <div class="form-group">
                 <label class="form-label">Device Type</label>
-                <select class="form-control" id="deviceType">
+                <select class="form-control" id="deviceType" name="device_type">
                     <option value="server">Server</option>
                     <option value="application">Application</option>
                     <option value="database">Database</option>
@@ -385,45 +385,73 @@
 </div>
 
 <script>
+function normalizePath(path) {
+    if (!path || path.trim() === """""") return "/";
+    path = path.trim();
+    if (!path.startsWith("/")) path = "/" + path;
+    if (!path.endsWith("/")) path = path + "/";
+    return path;
+}
 let devices = [];
 
 // ページ読み込み時
 document.addEventListener('DOMContentLoaded', function() {
     loadDevices();
+    loadDomains();
     
     // フォームのsubmitイベント
     document.getElementById('deviceForm').addEventListener('submit', function(e) {
         e.preventDefault();
         saveDevice();
     });
+    
+    // Add event listener for port input
+    const portInput = document.getElementById('devicePort');
+    if (portInput) {
+        portInput.addEventListener('input', updatePortHelper);
+        portInput.addEventListener('change', updatePortHelper);
+    }
 });
 
 // デバイス一覧を取得
 function loadDevices() {
     const basePath = window.location.pathname.includes('/lpg-admin') ? '/lpg-admin' : '';
     
+    console.log('Loading devices from:', `${basePath}/api/devices`);
+    
     fetch(`${basePath}/api/devices`)
         .then(response => response.json())
         .then(data => {
+            console.log('Devices data:', data);
             devices = data.devices || [];
+            console.log('Devices array:', devices);
             const grid = document.getElementById('device-grid');
+            
+            if (!grid) {
+                console.error('device-grid element not found!');
+                return;
+            }
             
             if (devices.length === 0) {
                 grid.innerHTML = '<div class="no-devices">No devices configured</div>';
                 return;
             }
             
-            grid.innerHTML = devices.map(device => `
+            console.log('Rendering devices:', devices.length, 'items');
+            grid.innerHTML = devices.map(device => {
+                console.log('Rendering device:', device);
+                return `
                 <div class="device-card" data-device-id="${device.id}">
                     <div class="device-header">
-                        <h3 class="device-name">${device.device_name || device.sitename || 'Unknown Device'}</h3>
+                        <h3 class="device-name">${device.name || 'Unknown Device'}</h3>
                         <span class="device-status status-${device.status || 'unknown'}">${device.status || 'unknown'}</span>
                     </div>
                     <div class="device-info">
-                        <p><i class="fas fa-network-wired"></i> IP: ${device.ip_address}</p>
+                        <p><i class="fas fa-network-wired"></i> IP: ${device.ip}</p>
                         <p><i class="fas fa-ethernet"></i> Port: ${formatPortsWithProtocol(device.port)}</p>
-                        <p><i class="fas fa-route"></i> Path: ${device.path || device.registration_path || '/'}</p>
-                        ${device.domain_name ? `<p><i class="fas fa-globe"></i> Domain: ${device.domain_name}</p>` : ''}
+                        <p><i class="fas fa-route"></i> Path: ${device.path || '/'}</p>
+                        ${device.domain ? `<p><i class="fas fa-globe"></i> Domain: ${device.domain}</p>` : ''}
+                        <p><i class="fas fa-link"></i> Access URL: <a href="https://${device.domain || 'akb001yebraxfqsm9y.dyndns-web.com'}${device.path || '/'}" target="_blank" style="color: #4a9eff;">https://${device.domain || 'akb001yebraxfqsm9y.dyndns-web.com'}${device.path || '/'}</a></p>
                     </div>
                     <div class="device-actions">
                         <button class="btn-icon" onclick="editDevice('${device.id}')" title="Edit">
@@ -434,7 +462,8 @@ function loadDevices() {
                         </button>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         })
         .catch(error => {
             console.error('Error loading devices:', error);
@@ -511,12 +540,7 @@ function updatePortHelper() {
 }
 
 
-function showAddDeviceModal() {
-    document.getElementById('modalTitle').textContent = 'Add Device';
-    document.getElementById('deviceForm').reset();
-    document.getElementById('deviceId').value = '';
-    document.getElementById('deviceModal').classList.add('show');
-}
+// showAddDeviceModal is defined later (line 770)
 
 function editDevice(deviceId) {
     const device = devices.find(d => d.id === deviceId);
@@ -524,11 +548,11 @@ function editDevice(deviceId) {
     
     document.getElementById('modalTitle').textContent = 'Edit Device';
     document.getElementById('deviceId').value = device.id;
-    document.getElementById('deviceName').value = device.name || device.device_name || device.sitename || '';
-    document.getElementById('deviceIp').value = device.ip || device.ip_address || device.deviceip || '';
+    document.getElementById('deviceName').value = device.name || '';
+    document.getElementById('deviceIp').value = device.ip || '';
     document.getElementById('devicePort').value = formatPorts(device.port);
-    document.getElementById('devicePath').value = device.path || device.registration_path || '/';
-    document.getElementById('domainName').value = device.domain || device.domain_name || 'akb001yebraxfqsm9y.dyndns-web.com';
+    document.getElementById('devicePath').value = device.path || '/';
+    document.getElementById('domainName').value = device.domain || 'akb001yebraxfqsm9y.dyndns-web.com';
     document.getElementById('deviceDescription').value = device.description || '';
     document.getElementById('deviceType').value = device.type || 'server';
     
@@ -545,40 +569,66 @@ function closeModal() {
 
 // デバイスを保存
 function saveDevice() {
-    // URLのパスを適切に構築
-    const basePath = window.location.pathname.includes('/lpg-admin') ? '/lpg-admin' : '';
+    const form = document.getElementById('deviceForm');
+    if (!form) {
+        console.error('Device form not found');
+        return;
+    }
     
-    const deviceId = document.getElementById('deviceId').value;
-    const deviceData = {
-        site_name: document.getElementById('deviceName').value,
-        device_ip: document.getElementById('deviceIp').value,
-        port: document.getElementById('devicePort').value.split(',').map(p => p.trim()),
-        path: document.getElementById('devicePath').value,
-        domain_name: document.getElementById('domainName').value,
-        description: document.getElementById('deviceDescription').value,
-        type: document.getElementById('deviceType').value
+    // Form validation
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Collect form data using name attributes
+    const formData = {
+        site_name: form.querySelector('[name="name"]').value.trim(),
+        device_ip: form.querySelector('[name="ip_address"]').value.trim(),
+        port: form.querySelector('[name="port"]').value.split(',').map(p => p.trim()).filter(p => p),
+        path: normalizePath(form.querySelector('[name="path"]').value),
+        domain_name: form.querySelector('[name="domain_name"]').value,
+        description: form.querySelector('[name="description"]').value.trim(),
+        type: form.querySelector('[name="device_type"]').value
     };
     
+    // Validation
+    if (!formData.site_name || !formData.device_ip) {
+        alert('Device name and IP address are required');
+        return;
+    }
+    
+    // Check if editing or adding
+    const deviceId = form.querySelector('[name="device_id"]').value;
+    const basePath = window.location.pathname.includes('/lpg-admin') ? '/lpg-admin' : '';
     const url = deviceId ? `${basePath}/api/devices/${deviceId}` : `${basePath}/api/devices`;
     const method = deviceId ? 'PUT' : 'POST';
+    
+    console.log('Saving device:', formData);
     
     fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(deviceData)
+        body: JSON.stringify(formData)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.success || result.status === 'success') {
             closeModal();
             loadDevices();
             alert(deviceId ? 'Device updated successfully' : 'Device added successfully');
         } else {
-            alert('エラー: ' + (result.error || result.message || 'Unknown error'));
+            alert('Error: ' + (result.error || result.message || 'Unknown error'));
         }
     })
     .catch(error => {
-        alert('通信エラー: ' + error.message);
+        console.error('Save device error:', error);
+        alert('Communication error: ' + error.message);
     });
 }
 
@@ -706,7 +756,7 @@ editDevice = function(deviceId) {
     setTimeout(() => {
         const device = devices.find(d => d.id === deviceId);
         if (device) {
-            document.getElementById('domainName').value = device.domain || device.domain_name || '';
+            document.getElementById('domainName').value = device.domain || '';
             updateFullPath();
         }
     }, 100);
@@ -744,23 +794,6 @@ showAddDeviceModal = function() {
     originalShowAddDeviceModal();
 };
 
-// Update the DOMContentLoaded event
-document.addEventListener('DOMContentLoaded', function() {
-    loadDevices();
-    loadDomains();
-    
-    // フォームのsubmitイベント
-    document.getElementById('deviceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveDevice();
-    });
-    
-    // Add event listener for port input
-    const portInput = document.getElementById('devicePort');
-    if (portInput) {
-        portInput.addEventListener('input', updatePortHelper);
-        portInput.addEventListener('change', updatePortHelper);
-    }
-});
+// Additional initialization code - already handled in the main DOMContentLoaded above
 </script>
 {% endblock %}
