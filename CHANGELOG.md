@@ -1,5 +1,57 @@
 # CHANGELOG
 
+## [2.1.0] - 2025-08-10
+
+### 🔄 Major Routing Architecture Update
+
+#### Changed
+- **BREAKING: Complete nginx configuration overhaul**
+  - All traffic now routes through LPG proxy at 127.0.0.1:8443
+  - Removed individual service location blocks from nginx
+  - Centralized all path-based routing logic within LPG
+  - nginx now serves purely as SSL terminator
+
+#### Added
+- **Enhanced WebSocket Support**
+  - Extended proxy timeouts to 7 days for long-lived connections
+  - Disabled proxy buffering for real-time communication
+  - Proper WebSocket upgrade header handling
+
+- **Improved Proxy Headers**
+  - Added X-Forwarded-Host header
+  - Added X-Forwarded-Port header
+  - Better client IP tracking with complete header set
+
+#### Fixed
+- **502 Bad Gateway errors**
+  - Resolved by routing all traffic through LPG
+  - Eliminated direct nginx-to-service routing conflicts
+  
+- **WebSocket connection issues**
+  - Fixed with proper upgrade headers and timeout configuration
+  
+- **SSL cipher compatibility**
+  - Updated to modern cipher suite configuration
+  - Added TLSv1.3 support
+
+#### Architecture
+```
+Before: nginx → Individual Services (complex routing)
+After:  nginx (SSL) → LPG (all routing) → Services
+```
+
+#### Configuration Files Updated
+- `nginx/lpg-ssl` - Complete rewrite for centralized routing
+- `README.md` - Version bump to 2.1.0
+
+#### Migration Notes
+- Update nginx configuration on all deployments
+- Restart nginx service after configuration update
+- Ensure LPG is running on 127.0.0.1:8443
+- All service routing must be configured in LPG, not nginx
+
+---
+
 ## [2.0.0] - 2025-08-09
 
 ### 🚨 Critical Security Update
