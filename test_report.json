@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-08-10T03:54:12.705Z",
+  "url": "https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/",
+  "testResults": {
+    "appLoad": {
+      "status": "failed",
+      "details": "HTTP Status: 502, URL: https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/"
+    },
+    "authRedirect": {
+      "status": "not-required",
+      "details": "No authentication redirect - may already be authenticated or not required"
+    },
+    "whiteboardAccess": {
+      "status": "not-found",
+      "details": "No whiteboard elements detected"
+    },
+    "jsErrors": {
+      "status": "errors-found",
+      "errors": [
+        {
+          "type": "console-error",
+          "message": "Failed to load resource: the server responded with a status of 502 ()"
+        },
+        {
+          "type": "console-error",
+          "message": "Failed to load resource: the server responded with a status of 502 ()"
+        }
+      ]
+    },
+    "websocketConnections": {
+      "status": "none-found",
+      "connections": []
+    },
+    "drawingFunctionality": {
+      "status": "not-accessible",
+      "details": "No drawing interface accessible"
+    }
+  }
+}

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LacisDrawBoards Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        .endpoint { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .endpoint.success { border-left: 4px solid #28a745; }
+        .endpoint.warning { border-left: 4px solid #ffc107; }
+        .endpoint.error { border-left: 4px solid #dc3545; }
+        .status { display: inline-block; padding: 3px 8px; border-radius: 3px; color: white; font-size: 12px; }
+        .status.success { background: #28a745; }
+        .status.warning { background: #ffc107; }
+        .status.error { background: #dc3545; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+        .component-found { color: #28a745; }
+        .component-missing { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LacisDrawBoards Test Report</h1>
+        <p>Generated: 2025-08-10T03-57-40.364Z</p>
+        
+        
+            <div class="endpoint error">
+                <h2>Production (HTTPS)</h2>
+                <p><strong>URL:</strong> https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/</p>
+                <p><strong>Status:</strong> <span class="status error">
+                    Failed
+                </span></p>
+                
+                
+                <table>
+                    <tr><th>HTTP Status</th><td>502</td></tr>
+                    <tr><th>Final URL</th><td>https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/</td></tr>
+                </table>
+                
+                
+                
+                <h3>Components</h3>
+                <table>
+                    
+                    <tr>
+                        <td>canvas</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>svg</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>tldraw</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>drawingArea</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>toolbar</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>sidebar</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                </table>
+                
+                
+                
+                
+                
+            </div>
+            
+            <div class="endpoint warning">
+                <h2>Local Dev Server</h2>
+                <p><strong>URL:</strong> http://localhost:5173/lacisstack/boards/</p>
+                <p><strong>Status:</strong> <span class="status warning">
+                    Auth Required
+                </span></p>
+                
+                
+                <table>
+                    <tr><th>HTTP Status</th><td>200</td></tr>
+                    <tr><th>Final URL</th><td>https://lacisoath.web.app/login/?returnUrl=http%3A%2F%2Flocalhost%3A5173%2Flacisstack%2Fboards%2F</td></tr>
+                </table>
+                
+                
+                
+                <h3>Components</h3>
+                <table>
+                    
+                    <tr>
+                        <td>canvas</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>svg</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>tldraw</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>drawingArea</td>
+                        <td class="component-found">
+                            ✓ Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>toolbar</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>sidebar</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                </table>
+                
+                
+                
+                <h3>WebSocket Connections</h3>
+                <p>1 connection(s) detected</p>
+                
+                
+                
+            </div>
+            
+            <div class="endpoint error">
+                <h2>Local Proxy</h2>
+                <p><strong>URL:</strong> http://localhost:8080/lacisstack/boards/</p>
+                <p><strong>Status:</strong> <span class="status error">
+                    Failed
+                </span></p>
+                
+                
+                <table>
+                    <tr><th>HTTP Status</th><td>404</td></tr>
+                    <tr><th>Final URL</th><td>http://localhost:8080/lacisstack/boards/</td></tr>
+                </table>
+                
+                
+                
+                <h3>Components</h3>
+                <table>
+                    
+                    <tr>
+                        <td>canvas</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>svg</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>tldraw</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>drawingArea</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>toolbar</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td>sidebar</td>
+                        <td class="component-missing">
+                            ✗ Not Found
+                        </td>
+                    </tr>
+                    
+                </table>
+                
+                
+                
+                
+                
+            </div>
+            
+    </div>
+</body>
+</html>

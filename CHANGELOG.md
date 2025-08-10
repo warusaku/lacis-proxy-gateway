@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## [2.2.0] - 2025-08-10
+
+### 🎯 Path Rewriting Support for Application Deployment
+
+#### Added
+- **Path Rewriting in Proxy**
+  - Automatic path prefix removal for backend routing
+  - Maps `/lacisstack/boards/` → `/` for backend services
+  - Preserves original path in X-Original-Path header
+  - Intelligent path transformation logic
+
+- **Enhanced HTTP Method Support**
+  - Added HEAD, PUT, DELETE, OPTIONS, PATCH methods
+  - Proper HEAD method handling (no body transfer)
+  - Full RESTful API compatibility
+
+- **Improved Request Handling**
+  - Chunked transfer encoding for large responses
+  - Better timeout handling (30 seconds default)
+  - Enhanced error logging with detailed messages
+
+- **Additional Proxy Headers**
+  - X-Original-Path for debugging
+  - X-Real-IP for accurate client tracking
+  - X-Forwarded-Proto for protocol awareness
+
+#### Fixed
+- **404 Not Found errors for proxied applications**
+  - Resolved by implementing path rewriting
+  - Applications can now run at root path while accessed via subpaths
+  
+- **501 Not Implemented for HEAD requests**
+  - Added proper HEAD method support
+  - Fixed method handling for all HTTP verbs
+
+#### Technical Details
+- Path transformation example: `/lacisstack/boards/api/health` → `/api/health`
+- Supports applications that expect root-based routing
+- Maintains backward compatibility with existing configurations
+
 ## [2.1.0] - 2025-08-10
 
 ### 🔄 Major Routing Architecture Update

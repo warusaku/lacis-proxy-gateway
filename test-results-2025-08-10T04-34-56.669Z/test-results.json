@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-08-10T04:34:56.670Z",
+  "production": {
+    "url": "https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/",
+    "status": "completed",
+    "httpStatus": 502,
+    "redirects": [],
+    "errors": [
+      {
+        "type": "console-error",
+        "message": "Failed to load resource: the server responded with a status of 502 ()",
+        "timestamp": "2025-08-10T04:34:57.406Z"
+      }
+    ],
+    "websockets": [],
+    "authentication": {
+      "required": false,
+      "oauth": false,
+      "redirectUrl": null
+    },
+    "pageLoad": {
+      "success": false,
+      "loadTime": 695,
+      "domReady": true
+    }
+  },
+  "local": {
+    "url": "http://localhost:5173/lacisstack/boards/",
+    "status": "running",
+    "httpStatus": 200,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "websockets": [],
+    "serverRunning": true
+  },
+  "issues": [
+    {
+      "severity": "high",
+      "area": "proxy",
+      "description": "LPG proxy not responding on port 8080"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "medium",
+      "action": "Check WebSocket configuration",
+      "details": "No WebSocket connections detected. Verify nginx WebSocket proxy configuration."
+    },
+    {
+      "priority": "high",
+      "action": "Fix JavaScript errors",
+      "details": "Found 1 JavaScript errors that need to be resolved."
+    }
+  ]
+}

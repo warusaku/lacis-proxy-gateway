@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LacisDrawBoards Test Report</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .section { 
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-success { color: #4CAF50; font-weight: bold; }
+        .status-failed { color: #f44336; font-weight: bold; }
+        .status-warning { color: #ff9800; font-weight: bold; }
+        .issue { 
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #f44336;
+            background: #ffebee;
+        }
+        .recommendation {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #2196F3;
+            background: #e3f2fd;
+        }
+        .metadata { color: #666; font-size: 14px; }
+        pre { 
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 LacisDrawBoards Test Report</h1>
+    <div class="metadata">Generated: 2025-08-10T04:34:37.320Z</div>
+
+    <div class="section">
+        <h2>Production Environment</h2>
+        <table>
+            <tr><th>Property</th><th>Value</th></tr>
+            <tr><td>URL</td><td>https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/</td></tr>
+            <tr><td>HTTP Status</td><td class="status-failed">502</td></tr>
+            <tr><td>Load Time</td><td>925ms</td></tr>
+            <tr><td>Authentication Required</td><td>No</td></tr>
+            <tr><td>OAuth Configured</td><td>No</td></tr>
+            <tr><td>WebSocket Connections</td><td>0</td></tr>
+            <tr><td>JavaScript Errors</td><td class="status-failed">1</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Local Development</h2>
+        <table>
+            <tr><th>Property</th><th>Value</th></tr>
+            <tr><td>URL</td><td>http://localhost:5173/lacisstack/boards/</td></tr>
+            <tr><td>Server Running</td><td class="status-success">Yes</td></tr>
+            <tr><td>HTTP Status</td><td>200</td></tr>
+            <tr><td>JavaScript Errors</td><td>1</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Issues Found</h2>
+        
+            <div class="issue">
+                <strong>[CRITICAL]</strong> production: Failed to load production URL: page.waitForTimeout is not a function
+            </div>
+          
+            <div class="issue">
+                <strong>[HIGH]</strong> proxy: LPG proxy not responding on port 8080
+            </div>
+          
+    </div>
+
+    <div class="section">
+        <h2>Recommendations</h2>
+        
+            <div class="recommendation">
+                <strong>[CRITICAL]</strong> Fix production URL accessibility<br>
+                <small>The production URL is not accessible. Check nginx configuration and SSL certificates.</small>
+            </div>
+          
+            <div class="recommendation">
+                <strong>[MEDIUM]</strong> Check WebSocket configuration<br>
+                <small>No WebSocket connections detected. Verify nginx WebSocket proxy configuration.</small>
+            </div>
+          
+            <div class="recommendation">
+                <strong>[HIGH]</strong> Fix JavaScript errors<br>
+                <small>Found 1 JavaScript errors that need to be resolved.</small>
+            </div>
+          
+    </div>
+
+    <div class="section">
+        <h2>JavaScript Errors Detail</h2>
+        <pre>[
+  {
+    "type": "navigation-error",
+    "message": "page.waitForTimeout is not a function",
+    "stack": "TypeError: page.waitForTimeout is not a function\n    at LacisDrawBoardsTester.testProductionURL (/Volumes/crucial_MX500/lacis_project/project/LPG/test_lacis_comprehensive.js:181:24)\n    at async LacisDrawBoardsTester.run (/Volumes/crucial_MX500/lacis_project/project/LPG/test_lacis_comprehensive.js:588:13)"
+  }
+]</pre>
+    </div>
+
+    <div class="section">
+        <h2>WebSocket Connections</h2>
+        <p class="status-warning">No WebSocket connections detected.</p>
+    </div>
+</body>
+</html>
+        

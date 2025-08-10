@@ -1,0 +1,131 @@
+{
+  "timestamp": "2025-08-10T03-57-40.364Z",
+  "endpoints": [
+    {
+      "name": "Production (HTTPS)",
+      "url": "https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/",
+      "results": {
+        "loadStatus": {
+          "success": false,
+          "httpStatus": 502,
+          "finalUrl": "https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/"
+        },
+        "authentication": {
+          "redirected": false,
+          "currentUrl": "https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/"
+        },
+        "whiteboardComponents": {
+          "canvas": false,
+          "svg": false,
+          "tldraw": false,
+          "drawingArea": false,
+          "toolbar": false,
+          "sidebar": false
+        },
+        "reactApp": {
+          "hasRoot": false,
+          "reactDetected": false
+        },
+        "websockets": {
+          "count": 0,
+          "connections": []
+        },
+        "jsErrors": [],
+        "networkErrors": [],
+        "pageContent": {
+          "title": "502 Bad Gateway",
+          "hasContent": true,
+          "bodyText": "502 Bad Gateway\nnginx/1.18.0 (Ubuntu)"
+        }
+      }
+    },
+    {
+      "name": "Local Dev Server",
+      "url": "http://localhost:5173/lacisstack/boards/",
+      "results": {
+        "loadStatus": {
+          "success": true,
+          "httpStatus": 200,
+          "finalUrl": "https://lacisoath.web.app/login/?returnUrl=http%3A%2F%2Flocalhost%3A5173%2Flacisstack%2Fboards%2F"
+        },
+        "authentication": {
+          "redirected": true,
+          "currentUrl": "https://lacisoath.web.app/login/?returnUrl=http%3A%2F%2Flocalhost%3A5173%2Flacisstack%2Fboards%2F",
+          "hasLoginForm": true,
+          "hasCredentialFields": true
+        },
+        "whiteboardComponents": {
+          "canvas": false,
+          "svg": false,
+          "tldraw": false,
+          "drawingArea": true,
+          "toolbar": false,
+          "sidebar": false
+        },
+        "reactApp": {
+          "hasRoot": false,
+          "reactDetected": false
+        },
+        "websockets": {
+          "count": 1,
+          "connections": [
+            {
+              "url": "ws://localhost:5173/lacisstack/boards/?token=JKHoB5xEQpcM",
+              "status": "active"
+            }
+          ]
+        },
+        "jsErrors": [],
+        "networkErrors": [
+          {
+            "url": "https://lacisoath.web.app/login?returnUrl=http%3A%2F%2Flocalhost%3A5173%2Flacisstack%2Fboards%2F",
+            "failure": "net::ERR_ABORTED"
+          }
+        ],
+        "pageContent": {
+          "title": "LacisOath Login",
+          "hasContent": true,
+          "bodyText": "LacisOath Login\nログイン\n新規登録\nEdict認証\n\nログイン後、元のページに戻ります\n\nメールアドレス\nパスワード\nパスワードを忘れた方\nログイン\nまたは\nGoogleでログイン\nLINEでログイン\nWeChatでログイン\nアカウントをお持ちでない方は新規登録\n\n© 2025 LacisOath. All rights reserved."
+        }
+      }
+    },
+    {
+      "name": "Local Proxy",
+      "url": "http://localhost:8080/lacisstack/boards/",
+      "results": {
+        "loadStatus": {
+          "success": false,
+          "httpStatus": 404,
+          "finalUrl": "http://localhost:8080/lacisstack/boards/"
+        },
+        "authentication": {
+          "redirected": false,
+          "currentUrl": "http://localhost:8080/lacisstack/boards/"
+        },
+        "whiteboardComponents": {
+          "canvas": false,
+          "svg": false,
+          "tldraw": false,
+          "drawingArea": false,
+          "toolbar": false,
+          "sidebar": false
+        },
+        "reactApp": {
+          "hasRoot": false,
+          "reactDetected": false
+        },
+        "websockets": {
+          "count": 0,
+          "connections": []
+        },
+        "jsErrors": [],
+        "networkErrors": [],
+        "pageContent": {
+          "title": "Error",
+          "hasContent": true,
+          "bodyText": "Error: ENOENT: no such file or directory, stat '/private/tmp/frontend-build/index.html'"
+        }
+      }
+    }
+  ]
+}

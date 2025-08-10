@@ -1,0 +1,66 @@
+{
+  "timestamp": "2025-08-10T04:34:37.320Z",
+  "production": {
+    "url": "https://akb001yebraxfqsm9y.dyndns-web.com/lacisstack/boards/",
+    "status": "failed",
+    "httpStatus": 502,
+    "redirects": [],
+    "errors": [
+      {
+        "type": "navigation-error",
+        "message": "page.waitForTimeout is not a function",
+        "stack": "TypeError: page.waitForTimeout is not a function\n    at LacisDrawBoardsTester.testProductionURL (/Volumes/crucial_MX500/lacis_project/project/LPG/test_lacis_comprehensive.js:181:24)\n    at async LacisDrawBoardsTester.run (/Volumes/crucial_MX500/lacis_project/project/LPG/test_lacis_comprehensive.js:588:13)"
+      }
+    ],
+    "websockets": [],
+    "authentication": {
+      "required": false,
+      "oauth": false,
+      "redirectUrl": null
+    },
+    "pageLoad": {
+      "success": false,
+      "loadTime": 925,
+      "domReady": false
+    }
+  },
+  "local": {
+    "url": "http://localhost:5173/lacisstack/boards/",
+    "status": "error",
+    "httpStatus": 200,
+    "errors": [
+      "page.waitForTimeout is not a function"
+    ],
+    "websockets": [],
+    "serverRunning": true
+  },
+  "issues": [
+    {
+      "severity": "critical",
+      "area": "production",
+      "description": "Failed to load production URL: page.waitForTimeout is not a function"
+    },
+    {
+      "severity": "high",
+      "area": "proxy",
+      "description": "LPG proxy not responding on port 8080"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "critical",
+      "action": "Fix production URL accessibility",
+      "details": "The production URL is not accessible. Check nginx configuration and SSL certificates."
+    },
+    {
+      "priority": "medium",
+      "action": "Check WebSocket configuration",
+      "details": "No WebSocket connections detected. Verify nginx WebSocket proxy configuration."
+    },
+    {
+      "priority": "high",
+      "action": "Fix JavaScript errors",
+      "details": "Found 1 JavaScript errors that need to be resolved."
+    }
+  ]
+}
