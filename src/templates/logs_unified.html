@@ -119,79 +119,253 @@
         opacity: 0.2;
         margin-bottom: var(--spacing-md);
     }
+    
+    /* Tab styles */
+    .nav-tabs {
+        border-bottom: 1px solid var(--border-subtle);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .nav-tabs .nav-link {
+        color: var(--text-secondary);
+        border: none;
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        color: var(--text-primary);
+        border-bottom: 2px solid var(--accent-primary);
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: var(--accent-primary);
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid var(--accent-primary);
+    }
+    
+    .tab-content {
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Debug Log styles */
+    .debug-log-container {
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+        height: 600px;
+        overflow-y: auto;
+    }
+    
+    .debug-log-content {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        font-size: var(--font-size-small);
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--text-primary);
+    }
+    
+    .debug-log-stats {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .log-error { color: var(--accent-red); }
+    .log-warning { color: var(--accent-orange); }
+    .log-info { color: var(--accent-blue); }
+    .log-success { color: var(--accent-green); }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Debug Log Modal -->
+<div class="modal fade" id="debugLogModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-bug"></i> System Debug Logs
+                </h5>
+                <button type="button" class="close" data-bs-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="debug-log-stats">
+                                <span class="badge badge-info" id="logFileSize">Size: 0 KB</span>
+                                <span class="badge badge-warning" id="logMaxSize">Max: 500 KB</span>
+                                <span class="badge badge-success" id="logLineCount">Lines: 0</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <button class="btn btn-sm btn-info" onclick="refreshDebugLogs()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="downloadDebugLogs()">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="clearDebugLogs()">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="debug-log-container">
+                    <pre id="debugLogContent" class="debug-log-content">Loading debug logs...</pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="form-check mr-auto">
+                    <input type="checkbox" class="form-check-input" id="autoRefreshDebug" checked>
+                    <label class="form-check-label" for="autoRefreshDebug">
+                        Auto-refresh (5s)
+                    </label>
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="page-header">
     <h1 class="page-title">
         <i class="fas fa-file-alt"></i>
         System Logs
     </h1>
-    <p class="page-subtitle">View system activity and access logs</p>
+    <p class="page-subtitle">View system activity and debug logs</p>
 </div>
 
 <div class="log-container">
-    <div class="log-header">
-        <h2 class="card-title">Recent Activity</h2>
-        <div>
-            <button class="btn btn-sm btn-secondary" onclick="refreshLogs()">
-                <i class="fas fa-sync"></i> Refresh
-            </button>
-        </div>
-    </div>
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs" id="logTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="system-tab" data-bs-toggle="tab" href="#system-logs" role="tab">
+                <i class="fas fa-list"></i> System Logs
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="debug-tab" data-bs-toggle="tab" href="#debug-logs" role="tab">
+                <i class="fas fa-bug"></i> Debug Logs
+            </a>
+        </li>
+    </ul>
     
-    <!-- Filter input field added for Task 3 -->
-    <div class="log-filters">
-        <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
-            <input type="text" 
-                   id="filterInput" 
-                   class="form-control" 
-                   placeholder="Filter logs by text..." 
-                   style="flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: var(--radius);"
-                   onkeyup="filterLogs()">
-            <button class="btn btn-sm btn-secondary" onclick="clearFilter()" style="padding: 8px 16px;">
-                <i class="fas fa-times"></i> Clear
-            </button>
-        </div>
-    </div>
-    
-    <div class="log-filters" style="margin-top: 10px;">
-        <div class="filter-chip active" data-filter="all">
-            <i class="fas fa-list"></i> All
-        </div>
-        <div class="filter-chip" data-filter="LOGIN">
-            <i class="fas fa-sign-in-alt"></i> Login
-        </div>
-        <div class="filter-chip" data-filter="ACCESS">
-            <i class="fas fa-globe"></i> Access
-        </div>
-        <div class="filter-chip" data-filter="ERROR">
-            <i class="fas fa-exclamation-circle"></i> Errors
-        </div>
-        <div class="filter-chip" data-filter="INFO">
-            <i class="fas fa-info-circle"></i> Info
-        </div>
-    </div>
-    
-    <div class="log-content" id="logContent">
-        {% if logs %}
-            {% for log in logs %}
-            <div class="log-entry" data-type="{{ log.type }}">
-                <span class="log-timestamp">{{ log.timestamp|jst_time }}</span>
-                <span class="log-type {{ log.type }}">{{ log.type }}</span>
-                <span class="log-message">{{ log.message }}</span>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-file-alt"></i>
+    <!-- Tab Content -->
+    <div class="tab-content" id="logTabContent">
+        <!-- System Logs Tab -->
+        <div class="tab-pane fade show active" id="system-logs" role="tabpanel">
+            <div class="log-header">
+                <h2 class="card-title">Recent Activity</h2>
+                <div>
+                    <button class="btn btn-sm btn-secondary" onclick="refreshLogs()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
                 </div>
-                <h3>No logs available</h3>
-                <p>System logs will appear here once activity is recorded</p>
             </div>
-        {% endif %}
+            
+            <!-- Filter input field -->
+            <div class="log-filters">
+                <div style="display: flex; gap: 10px; width: 100%; align-items: center;">
+                    <input type="text" 
+                           id="filterInput" 
+                           class="form-control" 
+                           placeholder="Filter logs by text..." 
+                           style="flex: 1; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: var(--radius);"
+                           onkeyup="filterLogs()">
+                    <button class="btn btn-sm btn-secondary" onclick="clearFilter()" style="padding: 8px 16px;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+            
+            <div class="log-filters" style="margin-top: 10px;">
+                <div class="filter-chip active" data-filter="all">
+                    <i class="fas fa-list"></i> All
+                </div>
+                <div class="filter-chip" data-filter="LOGIN">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </div>
+                <div class="filter-chip" data-filter="ACCESS">
+                    <i class="fas fa-globe"></i> Access
+                </div>
+                <div class="filter-chip" data-filter="ERROR">
+                    <i class="fas fa-exclamation-circle"></i> Errors
+                </div>
+                <div class="filter-chip" data-filter="INFO">
+                    <i class="fas fa-info-circle"></i> Info
+                </div>
+            </div>
+            
+            <div class="log-content" id="logContent">
+                {% if logs %}
+                    {% for log in logs %}
+                    <div class="log-entry" data-type="{{ log.type }}">
+                        <span class="log-timestamp">{{ log.timestamp|jst_time }}</span>
+                        <span class="log-type {{ log.type }}">{{ log.type }}</span>
+                        <span class="log-message">{{ log.message }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h3>No logs available</h3>
+                        <p>System logs will appear here once activity is recorded</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Debug Logs Tab -->
+        <div class="tab-pane fade" id="debug-logs" role="tabpanel">
+            <div class="log-header">
+                <h2 class="card-title">Debug Logs</h2>
+                <div>
+                    <button class="btn btn-sm btn-info" onclick="refreshDebugLogs()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="downloadDebugLogs()">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="clearDebugLogs()">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="showDebugLogModal()">
+                        <i class="fas fa-expand"></i> Full View
+                    </button>
+                </div>
+            </div>
+            
+            <div class="debug-log-stats">
+                <span class="badge badge-info" id="logFileSizeTab">Size: 0 KB</span>
+                <span class="badge badge-warning" id="logMaxSizeTab">Max: 500 KB</span>
+                <span class="badge badge-success" id="logLineCountTab">Lines: 0</span>
+            </div>
+            
+            <div class="debug-log-container">
+                <pre id="debugLogContentTab" class="debug-log-content">Loading debug logs...</pre>
+            </div>
+            
+            <div class="form-check mt-3">
+                <input type="checkbox" class="form-check-input" id="autoRefreshDebugTab" checked>
+                <label class="form-check-label" for="autoRefreshDebugTab">
+                    Auto-refresh (5s)
+                </label>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -219,13 +393,25 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    
+    // Tab change event
+    $('#logTabs a').on('shown.bs.tab', function (e) {
+        if (e.target.id === 'debug-tab') {
+            refreshDebugLogs();
+            if (document.getElementById('autoRefreshDebugTab').checked) {
+                startDebugLogAutoRefresh();
+            }
+        } else {
+            stopDebugLogAutoRefresh();
+        }
+    });
 });
 
 function refreshLogs() {
     location.reload();
 }
 
-// Filter logs function for Task 3
+// Filter logs function
 function filterLogs() {
     const filterInput = document.getElementById('filterInput');
     const filterText = filterInput.value.toLowerCase();
@@ -245,13 +431,250 @@ function filterLogs() {
     });
 }
 
-// Clear filter function for Task 3
+// Clear filter function
 function clearFilter() {
     const filterInput = document.getElementById('filterInput');
     filterInput.value = '';
-    filterLogs(); // Trigger filter to show all logs
+    filterLogs();
 }
 
-// Convert timestamp to JST in template filter
+// Debug Log Functions
+let debugLogInterval = null;
+
+function showDebugLogModal() {
+    $('#debugLogModal').modal('show');
+    refreshDebugLogs();
+    
+    // Start auto-refresh if enabled
+    if (document.getElementById('autoRefreshDebug').checked) {
+        startDebugLogAutoRefresh();
+    }
+}
+
+// Expose showDebugLogModal to global scope
+window.showDebugLogModal = showDebugLogModal;
+
+function startDebugLogAutoRefresh() {
+    stopDebugLogAutoRefresh();
+    debugLogInterval = setInterval(refreshDebugLogs, 30000);
+}
+
+function stopDebugLogAutoRefresh() {
+    if (debugLogInterval) {
+        clearInterval(debugLogInterval);
+        debugLogInterval = null;
+    }
+}
+
+function refreshDebugLogs() {
+    fetch('/lpg-admin/api/debug-logs?lines=200')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update content
+                let logContent = data.logs || 'No logs available';
+                
+                // Highlight log levels
+                logContent = logContent.replace(/\[ERROR\]/g, '<span class="log-error">[ERROR]</span>');
+                logContent = logContent.replace(/\[WARNING\]/g, '<span class="log-warning">[WARNING]</span>');
+                logContent = logContent.replace(/\[INFO\]/g, '<span class="log-info">[INFO]</span>');
+                logContent = logContent.replace(/\[SUCCESS\]/g, '<span class="log-success">[SUCCESS]</span>');
+                
+                // Update both modal and tab content
+                document.getElementById('debugLogContent').innerHTML = logContent;
+                document.getElementById('debugLogContentTab').innerHTML = logContent;
+                
+                // Update stats
+                const fileSize = (data.file_size / 1024).toFixed(2);
+                const maxSize = (data.max_size / 1024).toFixed(0);
+                const lineCount = (logContent.split('\n').length);
+                
+                // Update modal stats
+                document.getElementById('logFileSize').textContent = `Size: ${fileSize} KB`;
+                document.getElementById('logMaxSize').textContent = `Max: ${maxSize} KB`;
+                document.getElementById('logLineCount').textContent = `Lines: ${lineCount}`;
+                
+                // Update tab stats
+                document.getElementById('logFileSizeTab').textContent = `Size: ${fileSize} KB`;
+                document.getElementById('logMaxSizeTab').textContent = `Max: ${maxSize} KB`;
+                document.getElementById('logLineCountTab').textContent = `Lines: ${lineCount}`;
+                
+                // Auto-scroll to bottom
+                const containers = document.querySelectorAll('.debug-log-container');
+                containers.forEach(container => {
+                    container.scrollTop = container.scrollHeight;
+                });
+            } else {
+                const errorMsg = 'Error loading logs: ' + (data.message || 'Unknown error');
+                document.getElementById('debugLogContent').textContent = errorMsg;
+                document.getElementById('debugLogContentTab').textContent = errorMsg;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching debug logs:', error);
+            const errorMsg = 'Failed to load debug logs';
+            document.getElementById('debugLogContent').textContent = errorMsg;
+            document.getElementById('debugLogContentTab').textContent = errorMsg;
+        });
+}
+
+function clearDebugLogs() {
+    if (!confirm('Are you sure you want to clear all debug logs?')) {
+        return;
+    }
+    
+    fetch('/lpg-admin/api/debug-logs/clear', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Debug logs cleared successfully');
+            refreshDebugLogs();
+        } else {
+            alert('Failed to clear logs: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error clearing debug logs:', error);
+        alert('Failed to clear debug logs');
+    });
+}
+
+function downloadDebugLogs() {
+    fetch('/lpg-admin/api/debug-logs?lines=10000')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const blob = new Blob([data.logs], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `lpg_debug_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
+        })
+        .catch(error => {
+            console.error('Error downloading debug logs:', error);
+            alert('Failed to download debug logs');
+        });
+}
+
+// Handle auto-refresh checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const autoRefreshCheckbox = document.getElementById('autoRefreshDebug');
+    const autoRefreshCheckboxTab = document.getElementById('autoRefreshDebugTab');
+    
+    if (autoRefreshCheckbox) {
+        autoRefreshCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                startDebugLogAutoRefresh();
+            } else {
+                stopDebugLogAutoRefresh();
+            }
+        });
+    }
+    
+    if (autoRefreshCheckboxTab) {
+        autoRefreshCheckboxTab.addEventListener('change', function() {
+            if (this.checked) {
+                startDebugLogAutoRefresh();
+            } else {
+                stopDebugLogAutoRefresh();
+            }
+        });
+    }
+    
+    // Stop auto-refresh when modal is hidden
+    $('#debugLogModal').on('hidden.bs.modal', function() {
+        stopDebugLogAutoRefresh();
+    });
+});
 </script>
 {% endblock %}
+<script>
+// Bootstrap 5 Tab Initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tabs
+    var triggerTabList = [].slice.call(document.querySelectorAll('#logTabs a'))
+    triggerTabList.forEach(function (triggerEl) {
+        var tabTrigger = new bootstrap.Tab(triggerEl)
+        
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault()
+            tabTrigger.show()
+        })
+    })
+    
+    // Handle tab shown event for Debug Logs
+    var debugTab = document.getElementById('debug-tab')
+    if (debugTab) {
+        debugTab.addEventListener('shown.bs.tab', function (event) {
+            refreshDebugLogs();
+            if (document.getElementById('autoRefreshDebugTab').checked) {
+                startDebugLogAutoRefresh();
+            }
+        })
+    }
+});
+</script>
+
+<\!-- Manual Tab Switching for Bootstrap 5 -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Manual tab switching since Bootstrap 5 tabs may not work automatically
+    const systemTab = document.getElementById('system-tab');
+    const debugTab = document.getElementById('debug-tab');
+    const systemPane = document.getElementById('system-logs');
+    const debugPane = document.getElementById('debug-logs');
+    
+    if (systemTab && debugTab && systemPane && debugPane) {
+        // System tab click handler
+        systemTab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update tab states
+            systemTab.classList.add('active');
+            debugTab.classList.remove('active');
+            
+            // Update pane states
+            systemPane.classList.add('show', 'active');
+            debugPane.classList.remove('show', 'active');
+        });
+        
+        // Debug tab click handler
+        debugTab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update tab states
+            debugTab.classList.add('active');
+            systemTab.classList.remove('active');
+            
+            // Update pane states
+            debugPane.classList.add('show', 'active');
+            systemPane.classList.remove('show', 'active');
+            
+            // Trigger debug logs refresh
+            if (typeof refreshDebugLogs === 'function') {
+                refreshDebugLogs();
+            }
+            
+            // Start auto-refresh if checkbox is checked
+            const autoRefreshCheckbox = document.getElementById('autoRefreshDebugTab');
+            if (autoRefreshCheckbox && autoRefreshCheckbox.checked) {
+                if (typeof startDebugLogAutoRefresh === 'function') {
+                    startDebugLogAutoRefresh();
+                }
+            }
+        });
+        
+        console.log('Manual tab switching initialized');
+    }
+});
+</script>

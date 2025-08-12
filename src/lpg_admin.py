@@ -21,6 +21,7 @@ import json
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+import pytz
 
 # セッションストア
 session_store = {}
@@ -436,6 +437,21 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Debug: Check what's causing the spam
+    referrer = request.headers.get('Referer', '')
+    user_agent = request.headers.get('User-Agent', '')
+    
+    # Skip logging for automated requests
+    if any([
+        '/api/' in referrer,  # API redirects
+        'XMLHttpRequest' in user_agent,  # AJAX requests
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest',  # jQuery AJAX
+        '/logs' in referrer,  # From logs page auto-refresh
+    ]):
+        pass  # Don't log automated requests
+    else:
+        # Only log actual user navigation to login page
+        pass  # Login page access logging removed
     """ログインページ"""
     if request.method == 'POST':
         username = request.form.get('username', '')
@@ -450,6 +466,7 @@ def login():
             session['username'] = username
             # ログイン記録
             log_login(username, request.remote_addr)
+            write_debug_log(f'Login successful: user={username} from {request.remote_addr}', 'INFO')
             return redirect(url_for('index', _external=False))
         
         # その他のユーザーチェック
@@ -461,8 +478,10 @@ def login():
             session['username'] = username
             # ログイン記録
             log_login(username, request.remote_addr)
+            write_debug_log(f'Login successful: user={username} from {request.remote_addr}', 'INFO')
             return redirect(url_for('index', _external=False))
         
+        write_debug_log(f'Login failed: user={username} from {request.remote_addr}', 'WARNING')
         return render_template('login_unified.html', error='Invalid credentials')
     
     return render_template('login_unified.html')
@@ -476,6 +495,7 @@ def logout():
 @app.route('/domains')
 @login_required
 def domains():
+    write_debug_log("Domains page accessed", "INFO")
     """ドメイン管理"""
     config = load_config()
     
@@ -494,6 +514,7 @@ def domains():
 @app.route('/devices')
 @login_required
 def devices():
+    write_debug_log("Devices page accessed", "INFO")
     """デバイス管理"""
     # helper関数を使用してデバイス情報を取得
     devices_data = get_devices()
@@ -514,6 +535,7 @@ def devices():
 @app.route('/logs')
 @login_required
 def logs():
+    write_debug_log("Logs page accessed", "INFO")
     """ログビューアー"""
     # 簡易ログ表示(最新50行)
     log_entries = []
@@ -699,28 +721,43 @@ def api_add_domain():
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
 
+@app.route('/api/domains/<domain_name>', methods=['DELETE'])
+@login_required
+def api_delete_domain(domain_name):
+    """Delete a domain from configuration"""
+    try:
+        config = load_config()
+        
+        # Remove from hostdomains
+        if domain_name in config.get('hostdomains', {}):
+            del config['hostdomains'][domain_name]
+        
+        # Remove from hostingdevice
+        if domain_name in config.get('hostingdevice', {}):
+            del config['hostingdevice'][domain_name]
+        
+        # Remove from domains (if exists)
+        if domain_name in config.get('domains', {}):
+            del config['domains'][domain_name]
+        
+        # Save configuration
+        if save_config(config):
+            return jsonify({'status': 'success', 'message': f'Domain {domain_name} deleted'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Failed to save configuration'}), 500
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/api/domains')
 @login_required
 def api_domains():
     """Get list of registered domains"""
     try:
-        config = load_config()
-        domains = []
-        
-        # Extract unique domains from configuration
-        seen_domains = set()
-        for domain, settings in config.get('domains', {}).items():
-            if domain not in seen_domains:
-                domains.append({
-                    'name': domain,
-                    'upstream': settings.get('upstream', ''),
-                    'path': settings.get('path', '/')
-                })
-                seen_domains.add(domain)
-        
-        return jsonify({'domains': domains})
+        domains = get_domains()
+        return jsonify({"domains": domains})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/devices', methods=['POST'])
 @login_required
@@ -1029,6 +1066,7 @@ def api_delete_user(username):
 @app.route('/topology')
 @login_required
 def topology():
+    write_debug_log("Topology page accessed", "INFO")
     """システムトポロジービュー"""
     config = load_config()
     
@@ -1410,12 +1448,151 @@ def api_nginx_config():
         return str(e), 500
 
 
+
+# Debug log configuration
+DEBUG_LOG_FILE = '/var/log/lpg_debug.log'
+DEBUG_LOG_MAX_SIZE = 500 * 1024  # 500KB
+DEBUG_LOG_TRIM_SIZE = 150 * 1024  # Trim 150KB when max reached
+
+def write_debug_log(message, level='INFO'):
+    """Write detailed debug log with automatic rotation"""
+    try:
+        # Use JST timezone
+        jst = pytz.timezone('Asia/Tokyo')
+        timestamp = datetime.now(jst).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        log_entry = f"[{timestamp}] [{level}] {message}\n"
+        
+        # Ensure the log file exists
+        if not os.path.exists(DEBUG_LOG_FILE):
+            # Create the file if it doesn't exist
+            os.makedirs(os.path.dirname(DEBUG_LOG_FILE), exist_ok=True)
+            with open(DEBUG_LOG_FILE, 'w') as f:
+                f.write(f"[{timestamp}] [INFO] Debug log initialized\n")
+        
+        # Check file size and rotate if needed
+        file_size = os.path.getsize(DEBUG_LOG_FILE)
+        if file_size > DEBUG_LOG_MAX_SIZE:
+            # Read existing content
+            with open(DEBUG_LOG_FILE, 'r') as f:
+                content = f.read()
+            # Keep only the last portion
+            content = content[-(DEBUG_LOG_MAX_SIZE - DEBUG_LOG_TRIM_SIZE):]
+            # Find first complete line
+            first_newline = content.find('\n')
+            if first_newline > 0:
+                content = content[first_newline + 1:]
+            # Write back trimmed content
+            with open(DEBUG_LOG_FILE, 'w') as f:
+                f.write(content)
+                f.write(f"[{timestamp}] [INFO] Log rotated (exceeded {DEBUG_LOG_MAX_SIZE/1024:.0f}KB)\n")
+        
+        # Append new log entry
+        with open(DEBUG_LOG_FILE, 'a') as f:
+            f.write(log_entry)
+            f.flush()  # Force write to disk
+    except Exception as e:
+        # Log error to stderr instead of silently failing
+        import sys
+        print(f"Debug log error: {e}", file=sys.stderr)
+
+def get_debug_logs(lines=100):
+    """Get last N lines of debug log"""
+    try:
+        if not os.path.exists(DEBUG_LOG_FILE):
+            write_debug_log("Debug log initialized", "INFO")
+            return "Debug log initialized"
+        
+        with open(DEBUG_LOG_FILE, 'r') as f:
+            all_lines = f.readlines()
+            return ''.join(all_lines[-lines:])
+    except Exception as e:
+        return f"Error reading debug log: {str(e)}"
+
+@app.route('/api/debug-logs')
+@login_required
+def api_debug_logs():
+    """Get debug logs"""
+    try:
+        lines = request.args.get('lines', 100, type=int)
+        logs = get_debug_logs(lines)
+        file_size = os.path.getsize(DEBUG_LOG_FILE) if os.path.exists(DEBUG_LOG_FILE) else 0
+        
+        # write_debug_log(f"Debug logs requested (lines={lines})", "INFO")  # Removed noisy log
+        
+        return jsonify({
+            'status': 'success',
+            'logs': logs,
+            'file_size': file_size,
+            'max_size': DEBUG_LOG_MAX_SIZE
+        })
+    except Exception as e:
+        write_debug_log(f"Error fetching debug logs: {str(e)}", "ERROR")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/debug-logs/clear', methods=['POST'])
+@login_required
+def api_clear_debug_logs():
+    """Clear debug logs"""
+    try:
+        if os.path.exists(DEBUG_LOG_FILE):
+            os.remove(DEBUG_LOG_FILE)
+        write_debug_log("Debug log cleared and reinitialized", "INFO")
+        return jsonify({'status': 'success', 'message': 'Debug logs cleared'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 if __name__ == '__main__':
     # 簡易的な起動方法(本番環境ではgunicorn等を推奨)
     # LPGシステムではnohupで起動される
     import os
+    import signal
+    import traceback
+    
+    # Startup logging
+    write_debug_log('='*60, 'INFO')
+    write_debug_log('LPG Admin Service Starting', 'INFO')
+    write_debug_log(f'Working directory: {os.getcwd()}', 'INFO')
+    
     host = os.environ.get('LPG_ADMIN_HOST', '127.0.0.1')  # CRITICAL: Never use 0.0.0.0
     port = int(os.environ.get('LPG_ADMIN_PORT', '8443'))
+    
+    write_debug_log(f'Bind address configured: {host}:{port}', 'INFO')
+    
+    # Safety check
+    if host == '0.0.0.0':
+        write_debug_log('CRITICAL: Attempted to bind to 0.0.0.0 - BLOCKED\!', 'ERROR')
+        write_debug_log('Network loop prevention activated', 'ERROR')
+        import sys
+        sys.exit(1)
+    
+    # Load configuration
+    try:
+        config = load_config()
+        domains = config.get('domains', [])
+        devices = config.get('devices', [])
+        write_debug_log(f'Configuration loaded: {len(domains)} domains, {len(devices)} devices', 'INFO')
+        for domain in domains[:3]:
+            write_debug_log(f'  Domain: {domain.get("name", "?")} -> {domain.get("upstream", "?")}', 'INFO')
+        for device in devices[:3]:
+            write_debug_log(f'  Device: {device.get("name", "?")} @ {device.get("ip", "?")}', 'INFO')
+    except Exception as e:
+        write_debug_log(f'Config load error: {str(e)}', 'ERROR')
+        write_debug_log(traceback.format_exc(), 'ERROR')
+    
+    # Signal handlers
+    def signal_handler(signum, frame):
+        write_debug_log(f'Received signal {signum} - shutting down', 'INFO')
+        write_debug_log('LPG Admin Service stopped', 'INFO')
+        write_debug_log('='*60, 'INFO')
+        import sys
+        sys.exit(0)
+    
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    write_debug_log('Flask application initializing', 'INFO')
+    write_debug_log('='*60, 'INFO')
     
     print(f"Starting LPG Admin UI on {host}:{port}")
     print("Access the admin UI at http://192.168.234.2:8443")
