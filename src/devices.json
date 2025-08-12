@@ -1,23 +1,49 @@
 {
-  "devices": [
-    {
-      "id": "orangepi5plus",
-      "name": "OrangePi 5 Plus",
-      "ip": "192.168.234.10",
-      "port": [
-        80,
-        3000,
-        5432,
-        6379,
-        8080,
-        8081
-      ],
-      "type": "server",
-      "status": "active",
-      "description": "Main server hosting all services",
-      "access_count": 0,
-      "domain": "akb001yebraxfqsm9y.dyndns-web.com",
-      "path": "/lacisstack/boards/"
-    }
-  ]
+    "devices": [
+        {
+            "id": "orangepi5plus_frontend",
+            "name": "LacisDrawBoards Frontend",
+            "ip": "192.168.234.10",
+            "port": ["3000"],
+            "type": "application",
+            "status": "active",
+            "description": "Next.js Frontend Application",
+            "access_count": 0,
+            "domain": "akb001yebraxfqsm9y.dyndns-web.com",
+            "path": "/lacisstack/boards/",
+            "device_name": "LacisDrawBoards Frontend",
+            "ip_address": "192.168.234.10",
+            "domain_name": "akb001yebraxfqsm9y.dyndns-web.com"
+        },
+        {
+            "id": "orangepi5plus_api",
+            "name": "LacisDrawBoards API",
+            "ip": "192.168.234.10",
+            "port": ["8080"],
+            "type": "api",
+            "status": "active",
+            "description": "Express.js Backend API",
+            "access_count": 0,
+            "domain": "akb001yebraxfqsm9y.dyndns-web.com",
+            "path": "/lacisstack/boards/api/",
+            "device_name": "LacisDrawBoards API",
+            "ip_address": "192.168.234.10",
+            "domain_name": "akb001yebraxfqsm9y.dyndns-web.com"
+        },
+        {
+            "id": "orangepi5plus_websocket",
+            "name": "LacisDrawBoards WebSocket",
+            "ip": "192.168.234.10",
+            "port": ["8080"],
+            "type": "websocket",
+            "status": "active",
+            "description": "Socket.io WebSocket Connection",
+            "access_count": 0,
+            "domain": "akb001yebraxfqsm9y.dyndns-web.com",
+            "path": "/lacisstack/boards/ws",
+            "device_name": "LacisDrawBoards WebSocket",
+            "ip_address": "192.168.234.10",
+            "domain_name": "akb001yebraxfqsm9y.dyndns-web.com"
+        }
+    ]
 }
